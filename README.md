@@ -57,6 +57,8 @@ Future goals include:
   return buildErr
 ```
 
+Example of usage from OpenShift's experimental `dockerbuild` [command with mount secrets](https://github.com/openshift/origin/blob/26c9e032ff42f613fe10649cd7c5fa1b4c33501b/pkg/cmd/cli/cmd/dockerbuild/dockerbuild.go)
+
 ## Run conformance tests (very slow):
 
 ```
