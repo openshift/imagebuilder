@@ -30,6 +30,13 @@ Future goals include:
 * Port to the newer docker-engine client library
 * Windows support
 
+## Install and Run
+
+```
+$ go get -u github.com/openshift/imagebuilder/cmd/imagebuilder
+$ imagebuilder path_to_directory output_image_name
+```
+
 ## Example usage:
 
 ```
