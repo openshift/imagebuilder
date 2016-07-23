@@ -23,7 +23,6 @@ but bugs are always possible.
 
 Future goals include:
 
-* Add an example CLI command to make it easy to demo
 * Output OCI compatible images
 * Support other container execution engines, like runc or rkt
 * Better conformance testing
@@ -32,12 +31,19 @@ Future goals include:
 
 ## Install and Run
 
+To download and install the library and the binary, set up a Golang build environment and with `GOPATH` set run:
+
 ```
 $ go get -u github.com/openshift/imagebuilder/cmd/imagebuilder
+```
+
+The included command line takes two arguments, a path to a directory containing a dockerfile, and the name to tag the output image with.
+
+```
 $ imagebuilder path_to_directory output_image_name
 ```
 
-## Example usage:
+## Code Example
 
 ```
 	f, err := os.Open("path/to/Dockerfile")
