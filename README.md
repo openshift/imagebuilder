@@ -17,6 +17,8 @@ clients more control over how a Docker build is run, including:
   are not available when running Docker builds
 * Mount external files into the build that are not persisted as part of
   the final image (i.e. "secrets")
+* If there are no RUN commands in the Dockerfile, the container is created
+  and committed, but never started.
 
 The final image should be 99.9% compatible with regular docker builds,
 but bugs are always possible.
@@ -42,6 +44,17 @@ The included command line takes two arguments, a path to a directory containing 
 ```
 $ imagebuilder path_to_directory output_image_name
 ```
+
+To mount a file into the image for build that will not be present in the final output image, run:
+
+```
+$ imagebuilder --mount ~/secrets/private.key:/etc/keys/private.key path/to/my/code testimage
+```
+
+Any processes in the Dockerfile will have access to `/etc/keys/private.key`, but that file will not be part of the committed image.
+
+Note that running `--mount` requires Docker 1.10 or newer, as it uses a Docker volume to hold the mounted files and the volume API was not available in earlier versions.
+
 
 ## Code Example
 
