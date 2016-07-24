@@ -59,28 +59,28 @@ Note that running `--mount` requires Docker 1.10 or newer, as it uses a Docker v
 ## Code Example
 
 ```
-	f, err := os.Open("path/to/Dockerfile")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+f, err := os.Open("path/to/Dockerfile")
+if err != nil {
+	return err
+}
+defer f.Close()
 
-	e := builder.NewClientExecutor(o.Client)
-	e.Out, e.ErrOut = os.Stdout, os.Stderr
-	e.AllowPull = true
-	e.Directory = "context/directory"
-	e.Tag = "name/of-image:and-tag"
-	e.AuthFn = nil // ... pass a function to retrieve authorization info
-	e.LogFn = func(format string, args ...interface{}) {
-		fmt.Fprintf(e.ErrOut, "--> %s\n", fmt.Sprintf(format, args...))
-	}
+e := builder.NewClientExecutor(o.Client)
+e.Out, e.ErrOut = os.Stdout, os.Stderr
+e.AllowPull = true
+e.Directory = "context/directory"
+e.Tag = "name/of-image:and-tag"
+e.AuthFn = nil // ... pass a function to retrieve authorization info
+e.LogFn = func(format string, args ...interface{}) {
+	fmt.Fprintf(e.ErrOut, "--> %s\n", fmt.Sprintf(format, args...))
+}
 
-  buildErr := e.Build(f, map[string]string{"arg1":"value1"})
-  if err := e.Cleanup(); err != nil {
-    fmt.Fprintf(e.ErrOut, "error: Unable to clean up build: %v\n", err)
-  }
+buildErr := e.Build(f, map[string]string{"arg1":"value1"})
+if err := e.Cleanup(); err != nil {
+	fmt.Fprintf(e.ErrOut, "error: Unable to clean up build: %v\n", err)
+}
 
-  return buildErr
+return buildErr
 ```
 
 Example of usage from OpenShift's experimental `dockerbuild` [command with mount secrets](https://github.com/openshift/origin/blob/26c9e032ff42f613fe10649cd7c5fa1b4c33501b/pkg/cmd/cli/cmd/dockerbuild/dockerbuild.go)
