@@ -120,7 +120,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			}
 			from, err = e.CreateScratchImage()
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to create a scratch image for this build: %v", err)
 			}
 			defer e.CleanupImage(from)
 		}
@@ -160,7 +160,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 				}
 				v, err := e.Client.CreateVolume(docker.CreateVolumeOptions{Name: volumeName})
 				if err != nil {
-					return err
+					return fmt.Errorf("unable to create volume to mount secrets: %v", err)
 				}
 				defer e.cleanupVolume(volumeName)
 				sharedMount = v.Mountpoint
@@ -184,7 +184,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 		}
 		container, err := e.Client.CreateContainer(opts)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to create build container: %v", err)
 		}
 		e.Container = container
 
@@ -203,7 +203,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			})
 		}
 		if err := e.Copy(copies...); err != nil {
-			return err
+			return fmt.Errorf("unable to copy build context into container: %v", err)
 		}
 	}
 
@@ -226,7 +226,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 		}
 
 		if err := e.Client.StartContainer(e.Container.ID, &hostConfig); err != nil {
-			return err
+			return fmt.Errorf("unable to start build container: %v", err)
 		}
 		// TODO: is this racy? may have to loop wait in the actual run step
 	}
@@ -248,7 +248,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 	if mustStart {
 		glog.V(4).Infof("Stopping container %s ...", e.Container.ID)
 		if err := e.Client.StopContainer(e.Container.ID, 0); err != nil {
-			return err
+			return fmt.Errorf("unable to stop build container: %v", err)
 		}
 	}
 
@@ -275,7 +275,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 		Tag:        tag,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to commit build container: %v", err)
 	}
 	e.Image = image
 	glog.V(4).Infof("Committed %s to %s", e.Container.ID, e.Image.ID)
@@ -296,7 +296,7 @@ func (e *ClientExecutor) Cleanup() error {
 		Force:         true,
 	})
 	if _, ok := err.(*docker.NoSuchContainer); err != nil && !ok {
-		return err
+		return fmt.Errorf("unable to cleanup build container: %v", err)
 	}
 	e.Container = nil
 	return nil
@@ -392,7 +392,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 	for _, config := range auth {
 		// TODO: handle IDs?
 		pullImageOptions := docker.PullImageOptions{
-			Repository:    from,
+			Repository:    repository,
 			Tag:           tag,
 			OutputStream:  imageprogress.NewPullWriter(outputProgress),
 			RawJSONStream: true,
@@ -409,7 +409,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 		continue
 	}
 	if lastErr != nil {
-		return nil, lastErr
+		return nil, fmt.Errorf("unable to pull image (from: %s, tag: %s): %v", repository, tag, lastErr)
 	}
 
 	return e.Client.InspectImage(from)
