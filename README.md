@@ -6,6 +6,7 @@ Docker / OCI Image Builder
 [![Travis](https://travis-ci.org/openshift/imagebuilder.svg?branch=master)](https://travis-ci.org/openshift/imagebuilder)
 [![Join the chat at freenode:openshift-dev](https://img.shields.io/badge/irc-freenode%3A%20%23openshift--dev-blue.svg)](http://webchat.freenode.net/?channels=%23openshift-dev)
 
+Note: this library is beta and may contain bugs that prevent images from being identical to Docker build.  Test your images (and add to our conformance suite)!
 
 This library supports using the Dockerfile syntax to build Docker
 compatible images, without invoking Docker build. It is intended to give
