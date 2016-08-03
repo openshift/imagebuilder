@@ -46,6 +46,9 @@ type ClientExecutor struct {
 	// AllowPull when set will pull images that are not present on
 	// the daemon.
 	AllowPull bool
+	// IgnoreUnrecognizedInstructions, if true, allows instructions
+	// that are not yet supported to be ignored (will be printed)
+	IgnoreUnrecognizedInstructions bool
 	// TransientMounts are a set of mounts from outside the build
 	// to the inside that will not be part of the final image. Any
 	// content created inside the mount's destinationPath will be
@@ -413,6 +416,14 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 	}
 
 	return e.Client.InspectImage(from)
+}
+
+func (e *ClientExecutor) UnrecognizedInstruction(step *imagebuilder.Step) error {
+	if e.IgnoreUnrecognizedInstructions {
+		e.LogFn("warning: Unknown instruction: %s", strings.ToUpper(step.Command))
+		return nil
+	}
+	return fmt.Errorf("Unknown instruction: %s", strings.ToUpper(step.Command))
 }
 
 // Run executes a single Run command against the current container using exec().
