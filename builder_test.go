@@ -43,10 +43,11 @@ func TestRun(t *testing.T) {
 }
 
 type testExecutor struct {
-	Copies  []Copy
-	Runs    []Run
-	Configs []docker.Config
-	Err     error
+	Copies       []Copy
+	Runs         []Run
+	Configs      []docker.Config
+	Unrecognized []Step
+	Err          error
 }
 
 func (e *testExecutor) Copy(copies ...Copy) error {
@@ -58,15 +59,20 @@ func (e *testExecutor) Run(run Run, config docker.Config) error {
 	e.Configs = append(e.Configs, config)
 	return e.Err
 }
+func (e *testExecutor) UnrecognizedInstruction(step *Step) error {
+	e.Unrecognized = append(e.Unrecognized, *step)
+	return e.Err
+}
 
 func TestBuilder(t *testing.T) {
 	testCases := []struct {
-		Dockerfile string
-		From       string
-		Copies     []Copy
-		Runs       []Run
-		Config     docker.Config
-		ErrFn      func(err error) bool
+		Dockerfile   string
+		From         string
+		Copies       []Copy
+		Runs         []Run
+		Unrecognized []Step
+		Config       docker.Config
+		ErrFn        func(err error) bool
 	}{
 		{
 			Dockerfile: "dockerclient/testdata/dir/Dockerfile",
@@ -123,6 +129,18 @@ func TestBuilder(t *testing.T) {
 				Volumes:      map[string]struct{}{"/test2": {}, "/test3": {}, "/test": {}},
 				WorkingDir:   "/test",
 				OnBuild:      []string{"RUN [\"echo\", \"test\"]", "RUN echo test", "COPY . /"},
+			},
+		},
+		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.unknown",
+			From:       "busybox",
+			Unrecognized: []Step{
+				Step{Command: "health", Message: "HEALTH ", Original: "HEALTH NONE", Args: []string{""}, Flags: []string{}, Env: []string{}},
+				Step{Command: "shell", Message: "SHELL ", Original: "SHELL [\"/bin/sh\", \"-c\"]", Args: []string{""}, Flags: []string{}, Env: []string{}},
+				Step{Command: "unrecognized", Message: "UNRECOGNIZED ", Original: "UNRECOGNIZED", Args: []string{""}, Env: []string{}},
+			},
+			Config: docker.Config{
+				Image: "busybox",
 			},
 		},
 		{
@@ -198,6 +216,9 @@ func TestBuilder(t *testing.T) {
 		}
 		if !reflect.DeepEqual(test.Runs, e.Runs) {
 			t.Errorf("%d: unexpected runs: %#v", i, e.Runs)
+		}
+		if !reflect.DeepEqual(test.Unrecognized, e.Unrecognized) {
+			t.Errorf("%d: unexpected unrecognized: %#v", i, e.Unrecognized)
 		}
 		lastConfig := b.RunConfig
 		if !reflect.DeepEqual(test.Config, lastConfig) {

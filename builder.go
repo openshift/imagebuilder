@@ -32,6 +32,7 @@ type Run struct {
 type Executor interface {
 	Copy(copies ...Copy) error
 	Run(run Run, config docker.Config) error
+	UnrecognizedInstruction(step *Step) error
 }
 
 type logExecutor struct{}
@@ -48,6 +49,11 @@ func (logExecutor) Run(run Run, config docker.Config) error {
 	return nil
 }
 
+func (logExecutor) UnrecognizedInstruction(step *Step) error {
+	log.Printf("Unknown instruction: %s", strings.ToUpper(step.Command))
+	return nil
+}
+
 type noopExecutor struct{}
 
 func (noopExecutor) Copy(copies ...Copy) error {
@@ -55,6 +61,10 @@ func (noopExecutor) Copy(copies ...Copy) error {
 }
 
 func (noopExecutor) Run(run Run, config docker.Config) error {
+	return nil
+}
+
+func (noopExecutor) UnrecognizedInstruction(step *Step) error {
 	return nil
 }
 
@@ -103,7 +113,7 @@ func (b *Builder) Step() *Step {
 func (b *Builder) Run(step *Step, exec Executor) error {
 	fn, ok := evaluateTable[step.Command]
 	if !ok {
-		return fmt.Errorf("Unknown instruction: %s", strings.ToUpper(step.Command))
+		return exec.UnrecognizedInstruction(step)
 	}
 	if err := fn(b, step.Args, step.Attrs, step.Original); err != nil {
 		return err

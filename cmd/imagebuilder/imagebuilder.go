@@ -24,6 +24,7 @@ func main() {
 	flag.StringVar(&dockerfilePath, "dockerfile", dockerfilePath, "An optional path to a Dockerfile to use.")
 	flag.Var(&mountSpecs, "mount", "An optional list of files and directories to mount during the build. Use SRC:DST syntax for each path.")
 	flag.BoolVar(&options.AllowPull, "allow-pull", true, "Pull the images that are not present.")
+	flag.BoolVar(&options.IgnoreUnrecognizedInstructions, "ignore-unrecognized-instructions", true, "If an unrecognized Docker instruction is encountered, warn but do not fail the build.")
 
 	flag.Parse()
 
