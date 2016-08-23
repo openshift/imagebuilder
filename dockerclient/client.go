@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/builder/parser"
+	"github.com/docker/docker/builder/dockerfile/parser"
 	dockertypes "github.com/docker/engine-api/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive"
@@ -105,7 +105,9 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 
 	// TODO: check the Docker daemon version (1.20 is required for Upload)
 
-	node, err := parser.Parse(r)
+	d := parser.Directive{LookingForDirectives: true}
+	parser.SetEscapeToken(parser.DefaultEscapeToken, &d)
+	node, err := parser.Parse(r, &d)
 	if err != nil {
 		return err
 	}

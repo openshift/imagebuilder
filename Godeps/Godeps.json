@@ -7,22 +7,14 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/docker/distribution/digest",
-			"Rev": "596ca8b86acd3feebedae6bc08abf2a48d403a14"
+			"ImportPath": "github.com/docker/docker/builder/dockerfile/command",
+			"Comment": "docs-v1.12.0-rc4-2016-07-15-923-gd2fa978",
+			"Rev": "d2fa978d4d66622a197eb98f9a77fa217e25f449"
 		},
 		{
-			"ImportPath": "github.com/docker/distribution/reference",
-			"Rev": "596ca8b86acd3feebedae6bc08abf2a48d403a14"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/builder/command",
-			"Comment": "v1.4.1-4831-g0f5c9d3",
-			"Rev": "0f5c9d301b9b1cca66b3ea0f9dec3b5317d3686d"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/builder/parser",
-			"Comment": "v1.4.1-4831-g0f5c9d3",
-			"Rev": "0f5c9d301b9b1cca66b3ea0f9dec3b5317d3686d"
+			"ImportPath": "github.com/docker/docker/builder/dockerfile/parser",
+			"Comment": "docs-v1.12.0-rc4-2016-07-15-923-gd2fa978",
+			"Rev": "d2fa978d4d66622a197eb98f9a77fa217e25f449"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types",
@@ -50,22 +42,12 @@
 			"Rev": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2"
 		},
 		{
-			"ImportPath": "github.com/docker/engine-api/types/reference",
-			"Comment": "v0.3.1-62-g3d72d39",
-			"Rev": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2"
-		},
-		{
 			"ImportPath": "github.com/docker/engine-api/types/registry",
 			"Comment": "v0.3.1-62-g3d72d39",
 			"Rev": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/strslice",
-			"Comment": "v0.3.1-62-g3d72d39",
-			"Rev": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2"
-		},
-		{
-			"ImportPath": "github.com/docker/engine-api/types/time",
 			"Comment": "v0.3.1-62-g3d72d39",
 			"Rev": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2"
 		},

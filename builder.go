@@ -12,8 +12,8 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"github.com/docker/docker/builder/command"
-	"github.com/docker/docker/builder/parser"
+	"github.com/docker/docker/builder/dockerfile/command"
+	"github.com/docker/docker/builder/dockerfile/parser"
 )
 
 // Copy defines a copy operation required on the container.
@@ -222,7 +222,9 @@ func (b *Builder) FromImage(image *docker.Image, node *parser.Node) error {
 	if image.Config == nil || len(image.Config.OnBuild) == 0 {
 		return nil
 	}
-	extra, err := parser.Parse(bytes.NewBufferString(strings.Join(image.Config.OnBuild, "\n")))
+	d := parser.Directive{LookingForDirectives: true}
+	parser.SetEscapeToken(parser.DefaultEscapeToken, &d)
+	extra, err := parser.Parse(bytes.NewBufferString(strings.Join(image.Config.OnBuild, "\n")), &d)
 	if err != nil {
 		return err
 	}
