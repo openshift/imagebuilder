@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"fmt"
-	"github.com/docker/docker/builder/parser"
-	docker "github.com/fsouza/go-dockerclient"
 	"reflect"
+
+	"github.com/docker/docker/builder/dockerfile/parser"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 func TestRun(t *testing.T) {
@@ -17,7 +18,9 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	node, err := parser.Parse(f)
+	d := parser.Directive{LookingForDirectives: true}
+	parser.SetEscapeToken(parser.DefaultEscapeToken, &d)
+	node, err := parser.Parse(f, &d)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +139,7 @@ func TestBuilder(t *testing.T) {
 			From:       "busybox",
 			Unrecognized: []Step{
 				Step{Command: "health", Message: "HEALTH ", Original: "HEALTH NONE", Args: []string{""}, Flags: []string{}, Env: []string{}},
-				Step{Command: "shell", Message: "SHELL ", Original: "SHELL [\"/bin/sh\", \"-c\"]", Args: []string{""}, Flags: []string{}, Env: []string{}},
+				Step{Command: "shell", Message: "SHELL /bin/sh -c", Original: "SHELL [\"/bin/sh\", \"-c\"]", Args: []string{"/bin/sh", "-c"}, Flags: []string{}, Env: []string{}, Attrs: map[string]bool{"json": true}},
 				Step{Command: "unrecognized", Message: "UNRECOGNIZED ", Original: "UNRECOGNIZED", Args: []string{""}, Env: []string{}},
 			},
 			Config: docker.Config{
@@ -178,7 +181,9 @@ func TestBuilder(t *testing.T) {
 			t.Errorf("%d: %v", i, err)
 			continue
 		}
-		node, err := parser.Parse(bytes.NewBuffer(data))
+		d := parser.Directive{LookingForDirectives: true}
+		parser.SetEscapeToken(parser.DefaultEscapeToken, &d)
+		node, err := parser.Parse(bytes.NewBuffer(data), &d)
 		if err != nil {
 			t.Errorf("%d: %v", i, err)
 			continue

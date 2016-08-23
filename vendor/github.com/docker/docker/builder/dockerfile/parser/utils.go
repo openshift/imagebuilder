@@ -7,8 +7,8 @@ import (
 	"unicode"
 )
 
-// dumps the AST defined by `node` as a list of sexps. Returns a string
-// suitable for printing.
+// Dump dumps the AST defined by `node` as a list of sexps.
+// Returns a string suitable for printing.
 func (node *Node) Dump() string {
 	str := ""
 	str += node.Value
@@ -36,7 +36,7 @@ func (node *Node) Dump() string {
 
 // performs the dispatch based on the two primal strings, cmd and args. Please
 // look at the dispatch table in parser.go to see how these dispatchers work.
-func fullDispatch(cmd, args string) (*Node, map[string]bool, error) {
+func fullDispatch(cmd, args string, d *Directive) (*Node, map[string]bool, error) {
 	fn := dispatch[cmd]
 
 	// Ignore invalid Dockerfile instructions
@@ -44,7 +44,7 @@ func fullDispatch(cmd, args string) (*Node, map[string]bool, error) {
 		fn = parseIgnore
 	}
 
-	sexp, attrs, err := fn(args)
+	sexp, attrs, err := fn(args, d)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +59,7 @@ func splitCommand(line string) (string, []string, string, error) {
 	var flags []string
 
 	// Make sure we get the same results irrespective of leading/trailing spaces
-	cmdline := TOKEN_WHITESPACE.Split(strings.TrimSpace(line), 2)
+	cmdline := tokenWhitespace.Split(strings.TrimSpace(line), 2)
 	cmd := strings.ToLower(cmdline[0])
 
 	if len(cmdline) == 2 {
@@ -77,8 +77,8 @@ func splitCommand(line string) (string, []string, string, error) {
 // this function.
 func stripComments(line string) string {
 	// string is already trimmed at this point
-	if TOKEN_COMMENT.MatchString(line) {
-		return TOKEN_COMMENT.ReplaceAllString(line, "")
+	if tokenComment.MatchString(line) {
+		return tokenComment.ReplaceAllString(line, "")
 	}
 
 	return line
@@ -118,7 +118,7 @@ func extractBuilderFlags(line string) (string, []string, error) {
 				return line[pos:], words, nil
 			}
 
-			phase = inWord // found someting with "--", fall thru
+			phase = inWord // found someting with "--", fall through
 		}
 		if (phase == inWord || phase == inQuote) && (pos == len(line)) {
 			if word != "--" && (blankOK || len(word) > 0) {
