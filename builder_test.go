@@ -2,14 +2,14 @@ package imagebuilder
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 
-	"fmt"
-	"github.com/docker/docker/builder/parser"
+	"github.com/docker/docker/builder/dockerfile/parser"
 	docker "github.com/fsouza/go-dockerclient"
-	"reflect"
 )
 
 func TestRun(t *testing.T) {
