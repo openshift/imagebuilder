@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/builder/command"
-	"github.com/docker/docker/builder/parser"
+	"github.com/docker/docker/builder/dockerfile/command"
+	"github.com/docker/docker/builder/dockerfile/parser"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive"
 	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils"
