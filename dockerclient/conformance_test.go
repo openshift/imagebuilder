@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,6 +141,81 @@ func TestConformanceExternal(t *testing.T) {
 	for i, test := range testCases {
 		conformanceTester(t, c, test, i, *compareLayers)
 	}
+}
+
+func TestTransientMount(t *testing.T) {
+	c, err := docker.NewClientFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e := NewClientExecutor(c)
+	e.AllowPull = true
+	e.Directory = "testdata"
+	e.TransientMounts = []Mount{
+		{SourcePath: "dir", DestinationPath: "/mountdir"},
+		{SourcePath: "Dockerfile.env", DestinationPath: "/mountfile"},
+	}
+	e.Tag = fmt.Sprintf("conformance%d", rand.Int63())
+
+	defer c.RemoveImage(e.Tag)
+
+	out := &bytes.Buffer{}
+	e.Out = out
+	if err := e.Build(bytes.NewBufferString("FROM busybox\nRUN ls /mountdir/subdir\nRUN cat /mountfile\n"), nil); err != nil {
+		t.Fatalf("unable to build image: %v", err)
+	}
+	if !strings.Contains(out.String(), "ENV name=value\n") {
+		t.Errorf("did not find expected output:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "file2\n") {
+		t.Errorf("did not find expected output:\n%s", out.String())
+	}
+
+	result, err := testContainerOutput(c, e.Tag, []string{"/bin/sh", "-c", "ls -al /mountdir"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result, "subdir") {
+		t.Errorf("did not find expected output:\n%s", result)
+	}
+	result, err = testContainerOutput(c, e.Tag, []string{"/bin/sh", "-c", "cat /mountfile"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result, "ENV name=value\n") {
+		t.Errorf("did not find expected output:\n%s", result)
+	}
+}
+
+func testContainerOutput(c *docker.Client, tag string, command []string) (string, error) {
+	container, err := c.CreateContainer(docker.CreateContainerOptions{
+		Name: tag + "-test",
+		Config: &docker.Config{
+			Image:      tag,
+			Entrypoint: command,
+			Cmd:        nil,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	defer c.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
+	if err := c.StartContainer(container.ID, nil); err != nil {
+		return "", err
+	}
+	code, err := c.WaitContainer(container.ID)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("unrecognized exit code: %d", code)
+	}
+	out := &bytes.Buffer{}
+	if err := c.Logs(docker.LogsOptions{Container: container.ID, Stdout: true, OutputStream: out}); err != nil {
+		return "", fmt.Errorf("unable to get logs: %v", err)
+	}
+	return out.String(), nil
 }
 
 func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i int, deep bool) {

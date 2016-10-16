@@ -17,7 +17,7 @@ import (
 
 func main() {
 	log.SetFlags(0)
-	options := &dockerclient.ClientExecutor{}
+	options := dockerclient.NewClientExecutor(nil)
 	var dockerfilePath string
 	var mountSpecs stringSliceFlag
 
@@ -83,7 +83,7 @@ func build(dockerfilePath string, e *dockerclient.ClientExecutor, arguments map[
 	defer f.Close()
 
 	// TODO: handle signals
-	if err := e.Cleanup(); err != nil {
+	if err := e.Cleanup(e.Container); err != nil {
 		fmt.Fprintf(e.ErrOut, "error: Unable to clean up build: %v\n", err)
 	}
 

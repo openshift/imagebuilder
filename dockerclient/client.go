@@ -54,6 +54,10 @@ type ClientExecutor struct {
 	// omitted from the final image.
 	TransientMounts []Mount
 
+	// The path within the container to perform the transient mount.
+	ContainerTransientMount string
+
+	// The streams used for canonical output.
 	Out, ErrOut io.Writer
 
 	// Container is optional and can be set to a container to use as
@@ -81,6 +85,8 @@ func NewClientExecutor(client *docker.Client) *ClientExecutor {
 	return &ClientExecutor{
 		Client: client,
 		LogFn:  func(string, ...interface{}) {},
+
+		ContainerTransientMount: "/.imagebuilder-transient-mount",
 	}
 }
 
@@ -152,7 +158,13 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			Config: &docker.Config{
 				Image: from,
 			},
+			HostConfig: &docker.HostConfig{},
 		}
+		if e.HostConfig != nil {
+			opts.HostConfig = e.HostConfig
+		}
+		originalBinds := opts.HostConfig.Binds
+
 		if mustStart {
 			// Transient mounts only make sense on images that will be running processes
 			if len(e.TransientMounts) > 0 {
@@ -167,7 +179,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 				defer e.cleanupVolume(volumeName)
 				sharedMount = v.Mountpoint
 				opts.HostConfig = &docker.HostConfig{
-					Binds: []string{sharedMount + ":/tmp/__temporarymount"},
+					Binds: []string{sharedMount + ":" + e.ContainerTransientMount},
 				}
 			}
 
@@ -181,9 +193,23 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 				opts.Config.Entrypoint = []string{"/bin/sh", "-c"}
 			}
 		}
+
 		if len(opts.Config.Cmd) == 0 {
 			opts.Config.Entrypoint = []string{"/bin/sh", "-c", "# NOP"}
 		}
+
+		// copy any source content into the temporary mount path
+		if mustStart && len(e.TransientMounts) > 0 {
+			if len(sharedMount) == 0 {
+				return fmt.Errorf("no mount point available for temporary mounts")
+			}
+			binds, err := e.StartPartialContainer(opts, e.TransientMounts, sharedMount)
+			if err != nil {
+				return err
+			}
+			opts.HostConfig.Binds = append(originalBinds, binds...)
+		}
+
 		container, err := e.Client.CreateContainer(opts)
 		if err != nil {
 			return fmt.Errorf("unable to create build container: %v", err)
@@ -191,43 +217,12 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 		e.Container = container
 
 		// if we create the container, take responsibilty for cleaning up
-		defer e.Cleanup()
-	}
-
-	// copy any source content into the temporary mount path
-	if mustStart && len(e.TransientMounts) > 0 {
-		var copies []imagebuilder.Copy
-		for i, mount := range e.TransientMounts {
-			source := mount.SourcePath
-			copies = append(copies, imagebuilder.Copy{
-				Src:  source,
-				Dest: []string{path.Join("/tmp/__temporarymount", strconv.Itoa(i))},
-			})
-		}
-		if err := e.Copy(copies...); err != nil {
-			return fmt.Errorf("unable to copy build context into container: %v", err)
-		}
+		defer e.Cleanup(container)
 	}
 
 	// TODO: lazy start
 	if mustStart && !e.Container.State.Running {
-		var hostConfig docker.HostConfig
-		if e.HostConfig != nil {
-			hostConfig = *e.HostConfig
-		}
-
-		// mount individual items temporarily
-		for i, mount := range e.TransientMounts {
-			if len(sharedMount) == 0 {
-				return fmt.Errorf("no mount point available for temporary mounts")
-			}
-			hostConfig.Binds = append(
-				hostConfig.Binds,
-				fmt.Sprintf("%s:%s:%s", path.Join(sharedMount, strconv.Itoa(i)), mount.DestinationPath, "ro"),
-			)
-		}
-
-		if err := e.Client.StartContainer(e.Container.ID, &hostConfig); err != nil {
+		if err := e.Client.StartContainer(e.Container.ID, nil); err != nil {
 			return fmt.Errorf("unable to start build container: %v", err)
 		}
 		// TODO: is this racy? may have to loop wait in the actual run step
@@ -291,20 +286,46 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 	return nil
 }
 
+func (e *ClientExecutor) StartPartialContainer(opts docker.CreateContainerOptions, transientMounts []Mount, sharedMount string) ([]string, error) {
+	container, err := e.Client.CreateContainer(opts)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create build container: %v", err)
+	}
+	defer e.Cleanup(container)
+
+	var copies []imagebuilder.Copy
+	for i, mount := range transientMounts {
+		source := mount.SourcePath
+		copies = append(copies, imagebuilder.Copy{
+			Src:  source,
+			Dest: []string{path.Join(e.ContainerTransientMount, strconv.Itoa(i))},
+		})
+	}
+	if err := e.CopyContainer(container, copies...); err != nil {
+		return nil, fmt.Errorf("unable to copy build context into container: %v", err)
+	}
+
+	// mount individual items temporarily
+	var binds []string
+	for i, mount := range e.TransientMounts {
+		binds = append(binds, fmt.Sprintf("%s:%s:%s", path.Join(sharedMount, strconv.Itoa(i)), mount.DestinationPath, "ro"))
+	}
+	return binds, nil
+}
+
 // Cleanup will remove the container that created the build.
-func (e *ClientExecutor) Cleanup() error {
-	if e.Container == nil {
+func (e *ClientExecutor) Cleanup(container *docker.Container) error {
+	if container == nil {
 		return nil
 	}
 	err := e.Client.RemoveContainer(docker.RemoveContainerOptions{
-		ID:            e.Container.ID,
+		ID:            container.ID,
 		RemoveVolumes: true,
 		Force:         true,
 	})
 	if _, ok := err.(*docker.NoSuchContainer); err != nil && !ok {
 		return fmt.Errorf("unable to cleanup build container: %v", err)
 	}
-	e.Container = nil
 	return nil
 }
 
@@ -481,8 +502,13 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	return nil
 }
 
+// Copy implements the executor copy function.
 func (e *ClientExecutor) Copy(copies ...imagebuilder.Copy) error {
-	container := e.Container
+	return e.CopyContainer(e.Container, copies...)
+}
+
+// CopyContainer copies the provided content into a destination container.
+func (e *ClientExecutor) CopyContainer(container *docker.Container, copies ...imagebuilder.Copy) error {
 	for _, c := range copies {
 		// TODO: reuse source
 		for _, dst := range c.Dest {
