@@ -222,7 +222,7 @@ func (b *Builder) FromImage(image *docker.Image, node *parser.Node) error {
 	if image.Config == nil || len(image.Config.OnBuild) == 0 {
 		return nil
 	}
-	extra, err := parser.Parse(bytes.NewBufferString(strings.Join(image.Config.OnBuild, "\n")))
+	extra, err := ParseDockerfile(bytes.NewBufferString(strings.Join(image.Config.OnBuild, "\n")))
 	if err != nil {
 		return err
 	}

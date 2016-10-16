@@ -19,9 +19,9 @@ import (
 
 	"github.com/docker/docker/builder/dockerfile/command"
 	"github.com/docker/docker/builder/dockerfile/parser"
+	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/fileutils"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive"
-	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils"
 
 	"github.com/openshift/imagebuilder"
 )
@@ -197,7 +197,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		t.Errorf("%d: unable to read Dockerfile %q: %v", i, input, err)
 		return
 	}
-	node, err := parser.Parse(bytes.NewBuffer(data))
+	node, err := imagebuilder.ParseDockerfile(bytes.NewBuffer(data))
 	if err != nil {
 		t.Errorf("%d: can't parse Dockerfile %q: %v", i, input, err)
 		return
@@ -367,6 +367,22 @@ func (fns ignoreFuncs) Ignore(a, b *tar.Header) bool {
 // metadataFunc returns true if the metadata is equivalent
 type metadataFunc func(a, b *docker.Config) bool
 
+func normalizeOutputMetadata(a, b *docker.Config) {
+	// old docker servers can report no args escaped
+	if !a.ArgsEscaped && b.ArgsEscaped {
+		b.ArgsEscaped = false
+	}
+	if a.Entrypoint == nil && len(b.Entrypoint) == 0 {
+		// we are forced to set Entrypoint [] to reset the entrypoint
+		b.Entrypoint = nil
+	}
+	// Serialization of OnBuild is omitempty, which means it may be nil or empty depending on
+	// docker version
+	if len(a.OnBuild) == len(b.OnBuild) && len(a.OnBuild) == 0 {
+		b.OnBuild = a.OnBuild
+	}
+}
+
 // metadataEqual checks that the metadata of two images is directly equivalent.
 func metadataEqual(a, b *docker.Config) bool {
 	// compare output metadata
@@ -375,6 +391,7 @@ func metadataEqual(a, b *docker.Config) bool {
 	if !reflect.DeepEqual(e1, e2) {
 		return false
 	}
+	normalizeOutputMetadata(a, b)
 	a.Env, b.Env = nil, nil
 	if !reflect.DeepEqual(a, b) {
 		return false
@@ -386,10 +403,7 @@ func metadataEqual(a, b *docker.Config) bool {
 // that b is squashed over multiple layers, and a is not. b, for instance, will have an empty
 // slice entrypoint, while a would have a nil entrypoint.
 func metadataLayerEquivalent(a, b *docker.Config) bool {
-	if a.Entrypoint == nil && len(b.Entrypoint) == 0 {
-		// we are forced to set Entrypoint [] to reset the entrypoint
-		b.Entrypoint = nil
-	}
+	normalizeOutputMetadata(a, b)
 	if len(a.OnBuild) == 1 && len(b.OnBuild) > 0 && a.OnBuild[0] == b.OnBuild[len(b.OnBuild)-1] {
 		// a layered file will only contain the last OnBuild statement
 		b.OnBuild = a.OnBuild
@@ -412,7 +426,7 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 	}
 
 	if !metadataFn(imageA.Config, imageB.Config) {
-		t.Errorf("generated image metadata did not match: %#v\n%#v", imageA.Config, imageB.Config)
+		t.Errorf("generated image metadata did not match:\n%#v\n%#v", imageA.Config, imageB.Config)
 		return false
 	}
 

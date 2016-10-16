@@ -13,11 +13,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/builder/dockerfile/parser"
+	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/fileutils"
 	dockertypes "github.com/docker/engine-api/types"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive"
-	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils"
 	"github.com/golang/glog"
 
 	"github.com/openshift/imagebuilder"
@@ -105,7 +104,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 
 	// TODO: check the Docker daemon version (1.20 is required for Upload)
 
-	node, err := parser.Parse(r)
+	node, err := imagebuilder.ParseDockerfile(r)
 	if err != nil {
 		return err
 	}
@@ -256,6 +255,10 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 	}
 
 	config := b.Config()
+	if mustStart {
+		config.ArgsEscaped = true
+	}
+
 	var repository, tag string
 	if len(e.Tag) > 0 {
 		repository, tag = docker.ParseRepositoryTag(e.Tag)
