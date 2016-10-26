@@ -3,6 +3,7 @@ package imagebuilder
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -86,7 +87,7 @@ type Builder struct {
 	PendingRuns   []Run
 	PendingCopies []Copy
 
-	Executor Executor
+	//Executor Executor
 }
 
 func NewBuilder() *Builder {
@@ -98,6 +99,25 @@ func NewBuilder() *Builder {
 		Args:        make(map[string]string),
 		AllowedArgs: args,
 	}
+}
+
+func NewBuilderForReader(r io.Reader, args map[string]string) (*Builder, *parser.Node, error) {
+	b := NewBuilder()
+	b.Args = args
+	node, err := ParseDockerfile(r)
+	if err != nil {
+		return nil, nil, err
+	}
+	return b, node, err
+}
+
+func NewBuilderForFile(path string, args map[string]string) (*Builder, *parser.Node, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer f.Close()
+	return NewBuilderForReader(f, args)
 }
 
 // Step creates a new step from the current state.
