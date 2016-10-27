@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -142,6 +143,85 @@ func TestConformanceExternal(t *testing.T) {
 	}
 }
 
+func TestTransientMount(t *testing.T) {
+	c, err := docker.NewClientFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e := NewClientExecutor(c)
+	e.AllowPull = true
+	e.Directory = "testdata"
+	e.TransientMounts = []Mount{
+		{SourcePath: "dir", DestinationPath: "/mountdir"},
+		{SourcePath: "Dockerfile.env", DestinationPath: "/mountfile"},
+	}
+	e.Tag = fmt.Sprintf("conformance%d", rand.Int63())
+
+	defer c.RemoveImage(e.Tag)
+
+	out := &bytes.Buffer{}
+	e.Out = out
+	b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBufferString("FROM busybox\nRUN ls /mountdir/subdir\nRUN cat /mountfile\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Build(b, node); err != nil {
+		t.Fatalf("unable to build image: %v", err)
+	}
+	if !strings.Contains(out.String(), "ENV name=value\n") {
+		t.Errorf("did not find expected output:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "file2\n") {
+		t.Errorf("did not find expected output:\n%s", out.String())
+	}
+
+	result, err := testContainerOutput(c, e.Tag, []string{"/bin/sh", "-c", "ls -al /mountdir"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result, "subdir") {
+		t.Errorf("did not find expected output:\n%s", result)
+	}
+	result, err = testContainerOutput(c, e.Tag, []string{"/bin/sh", "-c", "cat /mountfile"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result, "ENV name=value\n") {
+		t.Errorf("did not find expected output:\n%s", result)
+	}
+}
+
+func testContainerOutput(c *docker.Client, tag string, command []string) (string, error) {
+	container, err := c.CreateContainer(docker.CreateContainerOptions{
+		Name: tag + "-test",
+		Config: &docker.Config{
+			Image:      tag,
+			Entrypoint: command,
+			Cmd:        nil,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	defer c.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
+	if err := c.StartContainer(container.ID, nil); err != nil {
+		return "", err
+	}
+	code, err := c.WaitContainer(container.ID)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("unrecognized exit code: %d", code)
+	}
+	out := &bytes.Buffer{}
+	if err := c.Logs(docker.LogsOptions{Container: container.ID, Stdout: true, OutputStream: out}); err != nil {
+		return "", fmt.Errorf("unable to get logs: %v", err)
+	}
+	return out.String(), nil
+}
+
 func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i int, deep bool) {
 	dockerfile := test.Dockerfile
 	if len(dockerfile) == 0 {
@@ -266,7 +346,11 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			e.Out, e.ErrOut = out, out
 			e.Directory = contextDir
 			e.Tag = nameDirect
-			if err := e.Build(bytes.NewBufferString(testFile), nil); err != nil {
+			b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBufferString(testFile), nil)
+			if err != nil {
+				t.Fatalf("%d: %v", i, err)
+			}
+			if err := e.Build(b, node); err != nil {
 				t.Errorf("%d: failed to build step %d in dockerfile %q: %s\n%s", i, j, dockerfilePath, steps[j].Original, out)
 				break
 			}
@@ -325,7 +409,11 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		e.Out, e.ErrOut = out, out
 		e.Directory = contextDir
 		e.Tag = nameDirect
-		if err := e.Build(bytes.NewBuffer(data), nil); err != nil {
+		b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBuffer(data), nil)
+		if err != nil {
+			t.Fatalf("%d: %v", i, err)
+		}
+		if err := e.Build(b, node); err != nil {
 			t.Errorf("%d: failed to build complete image in %q: %v\n%s", i, input, err, out)
 		} else {
 			if !equivalentImages(

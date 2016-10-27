@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/docker/builder/dockerfile/parser"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
 	dockertypes "github.com/docker/engine-api/types"
@@ -54,6 +55,10 @@ type ClientExecutor struct {
 	// omitted from the final image.
 	TransientMounts []Mount
 
+	// The path within the container to perform the transient mount.
+	ContainerTransientMount string
+
+	// The streams used for canonical output.
 	Out, ErrOut io.Writer
 
 	// Container is optional and can be set to a container to use as
@@ -74,6 +79,10 @@ type ClientExecutor struct {
 	HostConfig *docker.HostConfig
 	// LogFn is an optional command to log information to the end user
 	LogFn func(format string, args ...interface{})
+
+	// Deferred is a list of operations that must be cleaned up at
+	// the end of execution. Use Release() to handle these.
+	Deferred []func() error
 }
 
 // NewClientExecutor creates a client executor.
@@ -81,7 +90,18 @@ func NewClientExecutor(client *docker.Client) *ClientExecutor {
 	return &ClientExecutor{
 		Client: client,
 		LogFn:  func(string, ...interface{}) {},
+
+		ContainerTransientMount: "/.imagebuilder-transient-mount",
 	}
+}
+
+func (e *ClientExecutor) DefaultExcludes() error {
+	excludes, err := imagebuilder.ParseDockerignore(e.Directory)
+	if err != nil {
+		return err
+	}
+	e.Excludes = append(excludes, ".dockerignore")
+	return nil
 }
 
 // Build is a helper method to perform a Docker build against the
@@ -90,25 +110,18 @@ func NewClientExecutor(client *docker.Client) *ClientExecutor {
 // container if the Dockerfile contains RUN commands. It will cleanup
 // any containers it creates directly, and set the e.Image.ID field
 // to the generated image.
-func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
-	b := imagebuilder.NewBuilder()
-	b.Args = args
-
-	if e.Excludes == nil {
-		excludes, err := imagebuilder.ParseDockerignore(e.Directory)
-		if err != nil {
-			return err
-		}
-		e.Excludes = append(excludes, ".dockerignore")
-	}
-
-	// TODO: check the Docker daemon version (1.20 is required for Upload)
-
-	node, err := imagebuilder.ParseDockerfile(r)
-	if err != nil {
+func (e *ClientExecutor) Build(b *imagebuilder.Builder, node *parser.Node) error {
+	defer e.Release()
+	if err := e.Prepare(b, node); err != nil {
 		return err
 	}
+	if err := e.Execute(b, node); err != nil {
+		return err
+	}
+	return e.Commit(b)
+}
 
+func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node) error {
 	// identify the base image
 	from, err := b.From(node)
 	if err != nil {
@@ -124,7 +137,7 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			if err != nil {
 				return fmt.Errorf("unable to create a scratch image for this build: %v", err)
 			}
-			defer e.CleanupImage(from)
+			e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImage(from) })
 		}
 		glog.V(4).Infof("Retrieving image %q", from)
 		e.Image, err = e.LoadImage(from)
@@ -152,7 +165,13 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			Config: &docker.Config{
 				Image: from,
 			},
+			HostConfig: &docker.HostConfig{},
 		}
+		if e.HostConfig != nil {
+			opts.HostConfig = e.HostConfig
+		}
+		originalBinds := opts.HostConfig.Binds
+
 		if mustStart {
 			// Transient mounts only make sense on images that will be running processes
 			if len(e.TransientMounts) > 0 {
@@ -164,10 +183,10 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 				if err != nil {
 					return fmt.Errorf("unable to create volume to mount secrets: %v", err)
 				}
-				defer e.cleanupVolume(volumeName)
+				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveVolume(volumeName) })
 				sharedMount = v.Mountpoint
 				opts.HostConfig = &docker.HostConfig{
-					Binds: []string{sharedMount + ":/tmp/__temporarymount"},
+					Binds: []string{volumeName + ":" + e.ContainerTransientMount},
 				}
 			}
 
@@ -181,58 +200,45 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 				opts.Config.Entrypoint = []string{"/bin/sh", "-c"}
 			}
 		}
+
 		if len(opts.Config.Cmd) == 0 {
 			opts.Config.Entrypoint = []string{"/bin/sh", "-c", "# NOP"}
 		}
+
+		// copy any source content into the temporary mount path
+		if mustStart && len(e.TransientMounts) > 0 {
+			if len(sharedMount) == 0 {
+				return fmt.Errorf("no mount point available for temporary mounts")
+			}
+			binds, err := e.PopulateTransientMounts(opts, e.TransientMounts, sharedMount)
+			if err != nil {
+				return err
+			}
+			opts.HostConfig.Binds = append(originalBinds, binds...)
+		}
+
 		container, err := e.Client.CreateContainer(opts)
 		if err != nil {
 			return fmt.Errorf("unable to create build container: %v", err)
 		}
 		e.Container = container
-
-		// if we create the container, take responsibilty for cleaning up
-		defer e.Cleanup()
-	}
-
-	// copy any source content into the temporary mount path
-	if mustStart && len(e.TransientMounts) > 0 {
-		var copies []imagebuilder.Copy
-		for i, mount := range e.TransientMounts {
-			source := mount.SourcePath
-			copies = append(copies, imagebuilder.Copy{
-				Src:  source,
-				Dest: []string{path.Join("/tmp/__temporarymount", strconv.Itoa(i))},
-			})
-		}
-		if err := e.Copy(copies...); err != nil {
-			return fmt.Errorf("unable to copy build context into container: %v", err)
-		}
+		e.Deferred = append(e.Deferred, func() error { return e.removeContainer(container.ID) })
 	}
 
 	// TODO: lazy start
 	if mustStart && !e.Container.State.Running {
-		var hostConfig docker.HostConfig
-		if e.HostConfig != nil {
-			hostConfig = *e.HostConfig
-		}
-
-		// mount individual items temporarily
-		for i, mount := range e.TransientMounts {
-			if len(sharedMount) == 0 {
-				return fmt.Errorf("no mount point available for temporary mounts")
-			}
-			hostConfig.Binds = append(
-				hostConfig.Binds,
-				fmt.Sprintf("%s:%s:%s", path.Join(sharedMount, strconv.Itoa(i)), mount.DestinationPath, "ro"),
-			)
-		}
-
-		if err := e.Client.StartContainer(e.Container.ID, &hostConfig); err != nil {
+		if err := e.Client.StartContainer(e.Container.ID, nil); err != nil {
 			return fmt.Errorf("unable to start build container: %v", err)
 		}
+		e.Container.State.Running = true
 		// TODO: is this racy? may have to loop wait in the actual run step
 	}
+	return nil
+}
 
+// Execute performs all of the provided steps against the initialized container. May be
+// invoked multiple times for a given container.
+func (e *ClientExecutor) Execute(b *imagebuilder.Builder, node *parser.Node) error {
 	for _, child := range node.Children {
 		step := b.Step()
 		if err := step.Resolve(child); err != nil {
@@ -247,15 +253,22 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 		}
 	}
 
-	if mustStart {
+	return nil
+}
+
+// Commit saves the completed build as an image with the provided tag. It will
+// stop the container, commit the image, and then remove the container.
+func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
+	config := b.Config()
+
+	if e.Container.State.Running {
 		glog.V(4).Infof("Stopping container %s ...", e.Container.ID)
 		if err := e.Client.StopContainer(e.Container.ID, 0); err != nil {
 			return fmt.Errorf("unable to stop build container: %v", err)
 		}
-	}
-
-	config := b.Config()
-	if mustStart {
+		e.Container.State.Running = false
+		// Starting the container may perform escaping of args, so to be consistent
+		// we also set that here
 		config.ArgsEscaped = true
 	}
 
@@ -272,6 +285,8 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 			e.LogFn("Committing changes ...")
 		}
 	}
+
+	defer e.Release()
 
 	image, err := e.Client.CommitContainer(docker.CommitContainerOptions{
 		Author:     b.Author,
@@ -291,20 +306,55 @@ func (e *ClientExecutor) Build(r io.Reader, args map[string]string) error {
 	return nil
 }
 
-// Cleanup will remove the container that created the build.
-func (e *ClientExecutor) Cleanup() error {
-	if e.Container == nil {
-		return nil
+func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOptions, transientMounts []Mount, sharedMount string) ([]string, error) {
+	container, err := e.Client.CreateContainer(opts)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create transient container: %v", err)
 	}
+	defer e.removeContainer(container.ID)
+
+	var copies []imagebuilder.Copy
+	for i, mount := range transientMounts {
+		source := mount.SourcePath
+		copies = append(copies, imagebuilder.Copy{
+			Src:  source,
+			Dest: []string{filepath.Join(e.ContainerTransientMount, strconv.Itoa(i))},
+		})
+	}
+	if err := e.CopyContainer(container, copies...); err != nil {
+		return nil, fmt.Errorf("unable to copy transient context into container: %v", err)
+	}
+
+	// mount individual items temporarily
+	var binds []string
+	for i, mount := range e.TransientMounts {
+		binds = append(binds, fmt.Sprintf("%s:%s:%s", filepath.Join(sharedMount, strconv.Itoa(i)), mount.DestinationPath, "ro"))
+	}
+	return binds, nil
+}
+
+// Release deletes any items started by this executor.
+func (e *ClientExecutor) Release() []error {
+	var errs []error
+	for _, fn := range e.Deferred {
+		if err := fn(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	e.Deferred = nil
+	return errs
+}
+
+// removeContainer removes the provided container ID
+func (e *ClientExecutor) removeContainer(id string) error {
 	err := e.Client.RemoveContainer(docker.RemoveContainerOptions{
-		ID:            e.Container.ID,
+		ID:            id,
 		RemoveVolumes: true,
 		Force:         true,
 	})
 	if _, ok := err.(*docker.NoSuchContainer); err != nil && !ok {
-		return fmt.Errorf("unable to cleanup build container: %v", err)
+		return fmt.Errorf("unable to cleanup container: %v", err)
 	}
-	e.Container = nil
 	return nil
 }
 
@@ -346,16 +396,6 @@ func randSeq(source string, n int) (string, error) {
 		random[i] = source[random[i]%byte(len(source))]
 	}
 	return string(random), nil
-}
-
-// cleanupVolume attempts to remove the provided volume
-func (e *ClientExecutor) cleanupVolume(name string) error {
-	return e.Client.RemoveVolume(name)
-}
-
-// CleanupImage attempts to remove the provided image.
-func (e *ClientExecutor) CleanupImage(name string) error {
-	return e.Client.RemoveImage(name)
 }
 
 // LoadImage checks the client for an image matching from. If not found,
@@ -481,8 +521,13 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	return nil
 }
 
+// Copy implements the executor copy function.
 func (e *ClientExecutor) Copy(copies ...imagebuilder.Copy) error {
-	container := e.Container
+	return e.CopyContainer(e.Container, copies...)
+}
+
+// CopyContainer copies the provided content into a destination container.
+func (e *ClientExecutor) CopyContainer(container *docker.Container, copies ...imagebuilder.Copy) error {
 	for _, c := range copies {
 		// TODO: reuse source
 		for _, dst := range c.Dest {
@@ -491,6 +536,7 @@ func (e *ClientExecutor) Copy(copies ...imagebuilder.Copy) error {
 			if err != nil {
 				return err
 			}
+
 			glog.V(5).Infof("Uploading to %s at %s", container.ID, dst)
 			err = e.Client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
 				InputStream: r,
