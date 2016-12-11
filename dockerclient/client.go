@@ -222,7 +222,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node) err
 			return fmt.Errorf("unable to create build container: %v", err)
 		}
 		e.Container = container
-		e.Deferred = append(e.Deferred, func() error { return e.removeContainer(container.ID) })
+		e.Deferred = append([]func() error{func() error { return e.removeContainer(container.ID) }}, e.Deferred...)
 	}
 
 	// TODO: lazy start
@@ -286,7 +286,11 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 		}
 	}
 
-	defer e.Release()
+	defer func() {
+		for _, err := range e.Release() {
+			e.LogFn("Unable to cleanup: %v", err)
+		}
+	}()
 
 	image, err := e.Client.CommitContainer(docker.CommitContainerOptions{
 		Author:     b.Author,
@@ -347,6 +351,7 @@ func (e *ClientExecutor) Release() []error {
 
 // removeContainer removes the provided container ID
 func (e *ClientExecutor) removeContainer(id string) error {
+	e.Client.StopContainer(id, 0)
 	err := e.Client.RemoveContainer(docker.RemoveContainerOptions{
 		ID:            id,
 		RemoveVolumes: true,
