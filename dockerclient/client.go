@@ -246,7 +246,8 @@ func (e *ClientExecutor) Execute(b *imagebuilder.Builder, node *parser.Node) err
 		}
 		glog.V(4).Infof("step: %s", step.Original)
 		if e.LogFn != nil {
-			e.LogFn(step.Original)
+			// original may have unescaped %, so perform fmt escaping
+			e.LogFn(strings.Replace(step.Original, "%", "%%", -1))
 		}
 		if err := b.Run(step, e); err != nil {
 			return err
