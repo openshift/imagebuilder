@@ -74,6 +74,7 @@ func TestBuilder(t *testing.T) {
 		Runs         []Run
 		Unrecognized []Step
 		Config       docker.Config
+		Image        *docker.Image
 		ErrFn        func(err error) bool
 	}{
 		{
@@ -197,6 +198,20 @@ func TestBuilder(t *testing.T) {
 				},
 			},
 		},
+		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.envsubst",
+			From:       "busybox",
+			Image: &docker.Image{
+				ID: "busybox2",
+				Config: &docker.Config{
+					Env: []string{"FOO=another", "BAR=original"},
+				},
+			},
+			Config: docker.Config{
+				Env:    []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "FOO=value"},
+				Labels: map[string]string{"test": "value"},
+			},
+		},
 	}
 	for i, test := range testCases {
 		data, err := ioutil.ReadFile(test.Dockerfile)
@@ -218,6 +233,12 @@ func TestBuilder(t *testing.T) {
 		if from != test.From {
 			t.Errorf("%d: unexpected FROM: %s", i, from)
 		}
+		if test.Image != nil {
+			if err := b.FromImage(test.Image, node); err != nil {
+				t.Errorf("%d: unexpected error: %v", i, err)
+			}
+		}
+
 		e := &testExecutor{}
 		var lastErr error
 		for j, child := range node.Children {
@@ -249,7 +270,7 @@ func TestBuilder(t *testing.T) {
 		lastConfig := b.RunConfig
 		if !reflect.DeepEqual(test.Config, lastConfig) {
 			data, _ := json.Marshal(lastConfig)
-			t.Errorf("%d: unexpected config:\n%s", i, string(data))
+			t.Errorf("%d: unexpected config: %s", i, string(data))
 		}
 	}
 }

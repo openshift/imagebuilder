@@ -68,12 +68,14 @@ func env(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 			envParts := strings.SplitN(envVar, "=", 2)
 			if envParts[0] == args[j] {
 				b.RunConfig.Env[i] = newVar
+				b.Env = append([]string{newVar}, b.Env...)
 				gotOne = true
 				break
 			}
 		}
 		if !gotOne {
 			b.RunConfig.Env = append(b.RunConfig.Env, newVar)
+			b.Env = append([]string{newVar}, b.Env...)
 		}
 		j++
 	}
