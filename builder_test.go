@@ -2,11 +2,14 @@ package imagebuilder
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 )
@@ -170,6 +173,30 @@ func TestBuilder(t *testing.T) {
 				User:  "root",
 			},
 		},
+		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.badhealthcheck",
+			From:       "debian",
+			Config: docker.Config{
+				Image: "busybox",
+			},
+			ErrFn: func(err error) bool {
+				return err != nil && strings.Contains(err.Error(), "HEALTHCHECK requires at least one argument")
+			},
+		},
+		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.healthcheck",
+			From:       "debian",
+			Config: docker.Config{
+				Image: "debian",
+				Cmd:   []string{"/bin/sh", "-c", "/app/main.sh"},
+				Healthcheck: &docker.HealthConfig{
+					Interval: 5 * time.Second,
+					Timeout:  3 * time.Second,
+					Retries:  3,
+					Test:     []string{"CMD-SHELL", "/app/check.sh --quiet"},
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		data, err := ioutil.ReadFile(test.Dockerfile)
@@ -221,7 +248,8 @@ func TestBuilder(t *testing.T) {
 		}
 		lastConfig := b.RunConfig
 		if !reflect.DeepEqual(test.Config, lastConfig) {
-			t.Errorf("%d: unexpected config: %#v", i, lastConfig)
+			data, _ := json.Marshal(lastConfig)
+			t.Errorf("%d: unexpected config:\n%s", i, string(data))
 		}
 	}
 }

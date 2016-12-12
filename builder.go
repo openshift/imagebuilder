@@ -87,7 +87,7 @@ type Builder struct {
 	PendingRuns   []Run
 	PendingCopies []Copy
 
-	//Executor Executor
+	Warnings []string
 }
 
 func NewBuilder() *Builder {
@@ -135,7 +135,7 @@ func (b *Builder) Run(step *Step, exec Executor) error {
 	if !ok {
 		return exec.UnrecognizedInstruction(step)
 	}
-	if err := fn(b, step.Args, step.Attrs, step.Original); err != nil {
+	if err := fn(b, step.Args, step.Attrs, step.Flags, step.Original); err != nil {
 		return err
 	}
 
@@ -277,26 +277,26 @@ func SplitChildren(node *parser.Node, value string) []*parser.Node {
 }
 
 // StepFunc is invoked with the result of a resolved step.
-type StepFunc func(*Builder, []string, map[string]bool, string) error
+type StepFunc func(*Builder, []string, map[string]bool, []string, string) error
 
 var evaluateTable = map[string]StepFunc{
-	command.Env:        env,
-	command.Label:      label,
-	command.Maintainer: maintainer,
-	command.Add:        add,
-	command.Copy:       dispatchCopy, // copy() is a go builtin
-	command.From:       from,
-	command.Onbuild:    onbuild,
-	command.Workdir:    workdir,
-	command.Run:        run,
-	command.Cmd:        cmd,
-	command.Entrypoint: entrypoint,
-	command.Expose:     expose,
-	command.Volume:     volume,
-	command.User:       user,
-	// TODO: use the public constants for these when we update dockerfile/
-	commandStopSignal: stopSignal,
-	commandArg:        arg,
+	command.Env:         env,
+	command.Label:       label,
+	command.Maintainer:  maintainer,
+	command.Add:         add,
+	command.Copy:        dispatchCopy, // copy() is a go builtin
+	command.From:        from,
+	command.Onbuild:     onbuild,
+	command.Workdir:     workdir,
+	command.Run:         run,
+	command.Cmd:         cmd,
+	command.Entrypoint:  entrypoint,
+	command.Expose:      expose,
+	command.Volume:      volume,
+	command.User:        user,
+	command.StopSignal:  stopSignal,
+	command.Arg:         arg,
+	command.Healthcheck: healthcheck,
 }
 
 // builtinAllowedBuildArgs is list of built-in allowed build args
