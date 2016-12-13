@@ -19,8 +19,8 @@ import (
 
 // Copy defines a copy operation required on the container.
 type Copy struct {
-	Src      string
-	Dest     []string
+	Src      []string
+	Dest     string
 	Download bool
 }
 
@@ -40,7 +40,7 @@ type logExecutor struct{}
 
 func (logExecutor) Copy(copies ...Copy) error {
 	for _, c := range copies {
-		log.Printf("COPY %s -> %v (download:%t)", c.Src, c.Dest, c.Download)
+		log.Printf("COPY %v -> %s (download:%t)", c.Src, c.Dest, c.Download)
 	}
 	return nil
 }

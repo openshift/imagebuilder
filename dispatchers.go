@@ -129,10 +129,9 @@ func add(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 	if len(args) < 2 {
 		return errAtLeastOneArgument("ADD")
 	}
-	for i := 1; i < len(args); i++ {
-		args[i] = makeAbsolute(args[i], b.RunConfig.WorkingDir)
-	}
-	b.PendingCopies = append(b.PendingCopies, Copy{Src: args[0], Dest: args[1:], Download: true})
+	last := len(args) - 1
+	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
+	b.PendingCopies = append(b.PendingCopies, Copy{Src: args[0:last], Dest: dest, Download: true})
 	return nil
 }
 
@@ -144,10 +143,9 @@ func dispatchCopy(b *Builder, args []string, attributes map[string]bool, flagArg
 	if len(args) < 2 {
 		return errAtLeastOneArgument("COPY")
 	}
-	for i := 1; i < len(args); i++ {
-		args[i] = makeAbsolute(args[i], b.RunConfig.WorkingDir)
-	}
-	b.PendingCopies = append(b.PendingCopies, Copy{Src: args[0], Dest: args[1:], Download: false})
+	last := len(args) - 1
+	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
+	b.PendingCopies = append(b.PendingCopies, Copy{Src: args[0:last], Dest: dest, Download: false})
 	return nil
 }
 

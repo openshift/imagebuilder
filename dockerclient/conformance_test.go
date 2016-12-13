@@ -83,6 +83,9 @@ func TestConformanceInternal(t *testing.T) {
 		{
 			Dockerfile: "testdata/Dockerfile.add",
 		},
+		{
+			ContextDir: "testdata/wildcard",
+		},
 	}
 
 	c, err := docker.NewClientFromEnv()
