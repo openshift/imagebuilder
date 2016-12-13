@@ -81,9 +81,9 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/dir/Dockerfile",
 			From:       "busybox",
 			Copies: []Copy{
-				{Src: ".", Dest: []string{"/"}, Download: false},
-				{Src: ".", Dest: []string{"/dir"}},
-				{Src: "subdir/", Dest: []string{"/test/"}, Download: false},
+				{Src: []string{"."}, Dest: "/", Download: false},
+				{Src: []string{"."}, Dest: "/dir"},
+				{Src: []string{"subdir/"}, Dest: "/test/", Download: false},
 			},
 			Config: docker.Config{
 				Image: "busybox",
@@ -93,7 +93,7 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/ignore/Dockerfile",
 			From:       "busybox",
 			Copies: []Copy{
-				{Src: ".", Dest: []string{"/"}},
+				{Src: []string{"."}, Dest: "/"},
 			},
 			Config: docker.Config{
 				Image: "busybox",
@@ -111,8 +111,8 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.edgecases",
 			From:       "busybox",
 			Copies: []Copy{
-				{Src: ".", Dest: []string{"/"}, Download: true},
-				{Src: ".", Dest: []string{"/test/copy"}},
+				{Src: []string{"."}, Dest: "/", Download: true},
+				{Src: []string{"."}, Dest: "/test/copy"},
 			},
 			Runs: []Run{
 				{Shell: false, Args: []string{"ls", "-la"}},
@@ -158,13 +158,13 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.add",
 			From:       "busybox",
 			Copies: []Copy{
-				{Src: "https://github.com/openshift/origin/raw/master/README.md", Dest: []string{"/README.md"}, Download: true},
-				{Src: "https://github.com/openshift/origin/raw/master/LICENSE", Dest: []string{"/"}, Download: true},
-				{Src: "https://github.com/openshift/origin/raw/master/LICENSE", Dest: []string{"/A"}, Download: true},
-				{Src: "https://github.com/openshift/origin/raw/master/LICENSE", Dest: []string{"/a"}, Download: true},
-				{Src: "https://github.com/openshift/origin/raw/master/LICENSE", Dest: []string{"/b/a"}, Download: true},
-				{Src: "https://github.com/openshift/origin/raw/master/LICENSE", Dest: []string{"/b/"}, Download: true},
-				{Src: "https://github.com/openshift/ruby-hello-world/archive/master.zip", Dest: []string{"/tmp/"}, Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/README.md"}, Dest: "/README.md", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/A", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/a", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/b/a", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/b/", Download: true},
+				{Src: []string{"https://github.com/openshift/ruby-hello-world/archive/master.zip"}, Dest: "/tmp/", Download: true},
 			},
 			Runs: []Run{
 				{Shell: true, Args: []string{"mkdir ./b"}},

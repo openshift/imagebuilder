@@ -322,8 +322,8 @@ func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOpti
 	for i, mount := range transientMounts {
 		source := mount.SourcePath
 		copies = append(copies, imagebuilder.Copy{
-			Src:  source,
-			Dest: []string{filepath.Join(e.ContainerTransientMount, strconv.Itoa(i))},
+			Src:  []string{source},
+			Dest: filepath.Join(e.ContainerTransientMount, strconv.Itoa(i)),
 		})
 	}
 	if err := e.CopyContainer(container, copies...); err != nil {
@@ -536,14 +536,14 @@ func (e *ClientExecutor) Copy(copies ...imagebuilder.Copy) error {
 func (e *ClientExecutor) CopyContainer(container *docker.Container, copies ...imagebuilder.Copy) error {
 	for _, c := range copies {
 		// TODO: reuse source
-		for _, dst := range c.Dest {
-			glog.V(4).Infof("Archiving %s %t", c.Src, c.Download)
-			r, closer, err := e.Archive(c.Src, dst, c.Download, c.Download)
+		for _, src := range c.Src {
+			glog.V(4).Infof("Archiving %s %t", src, c.Download)
+			r, closer, err := e.Archive(src, c.Dest, c.Download, c.Download)
 			if err != nil {
 				return err
 			}
 
-			glog.V(5).Infof("Uploading to %s at %s", container.ID, dst)
+			glog.V(5).Infof("Uploading to %s at %s", container.ID, c.Dest)
 			err = e.Client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
 				InputStream: r,
 				Path:        "/",
