@@ -41,7 +41,7 @@ $ go get -u github.com/openshift/imagebuilder/cmd/imagebuilder
 ```
 
 The included command line takes one argument, a path to a directory containing a Dockerfile. The `-t` option
-can be used to specify an image to tag as.
+can be used to specify an image to tag as:
 
 ```
 $ imagebuilder [-t TAG] DIRECTORY
