@@ -31,14 +31,14 @@ type Run struct {
 }
 
 type Executor interface {
-	Copy(copies ...Copy) error
+	Copy(excludes []string, copies ...Copy) error
 	Run(run Run, config docker.Config) error
 	UnrecognizedInstruction(step *Step) error
 }
 
 type logExecutor struct{}
 
-func (logExecutor) Copy(copies ...Copy) error {
+func (logExecutor) Copy(excludes []string, copies ...Copy) error {
 	for _, c := range copies {
 		log.Printf("COPY %v -> %s (download:%t)", c.Src, c.Dest, c.Download)
 	}
@@ -57,7 +57,7 @@ func (logExecutor) UnrecognizedInstruction(step *Step) error {
 
 type noopExecutor struct{}
 
-func (noopExecutor) Copy(copies ...Copy) error {
+func (noopExecutor) Copy(excludes []string, copies ...Copy) error {
 	return nil
 }
 
@@ -67,6 +67,43 @@ func (noopExecutor) Run(run Run, config docker.Config) error {
 
 func (noopExecutor) UnrecognizedInstruction(step *Step) error {
 	return nil
+}
+
+type VolumeSet []string
+
+func (s *VolumeSet) Add(path string) bool {
+	if path == "/" {
+		set := len(*s) != 1 || (*s)[0] != ""
+		*s = []string{""}
+		return set
+	}
+	path = strings.TrimSuffix(path, "/")
+	var adjusted []string
+	for _, p := range *s {
+		if p == path || strings.HasPrefix(path, p+"/") {
+			return false
+		}
+		if strings.HasPrefix(p, path+"/") {
+			continue
+		}
+		adjusted = append(adjusted, p)
+	}
+	adjusted = append(adjusted, path)
+	*s = adjusted
+	return true
+}
+
+func (s VolumeSet) Covers(path string) bool {
+	if path == "/" {
+		return len(s) == 1 && s[0] == ""
+	}
+	path = strings.TrimSuffix(path, "/")
+	for _, p := range s {
+		if p == path || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 var (
@@ -83,9 +120,12 @@ type Builder struct {
 	Author string
 
 	AllowedArgs map[string]bool
+	Volumes     VolumeSet
+	Excludes    []string
 
-	PendingRuns   []Run
-	PendingCopies []Copy
+	PendingVolumes VolumeSet
+	PendingRuns    []Run
+	PendingCopies  []Copy
 
 	Warnings []string
 }
@@ -129,8 +169,10 @@ func (b *Builder) Step() *Step {
 }
 
 // Run executes a step, transforming the current builder and
-// invoking any Copy or Run operations.
-func (b *Builder) Run(step *Step, exec Executor) error {
+// invoking any Copy or Run operations. noRunsRemaining is an
+// optimization hint that allows the builder to avoid performing
+// unnecessary work.
+func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	fn, ok := evaluateTable[step.Command]
 	if !ok {
 		return exec.UnrecognizedInstruction(step)
@@ -144,7 +186,18 @@ func (b *Builder) Run(step *Step, exec Executor) error {
 	runs := b.PendingRuns
 	b.PendingRuns = nil
 
-	if err := exec.Copy(copies...); err != nil {
+	// if any VOLUMEs were defined, snapshot their current
+	// contents if we have future runs, or exclude those
+	// locations if not.
+	for _, path := range b.PendingVolumes {
+		if b.Volumes.Add(path) {
+			if !noRunsRemaining {
+				// TODO: snapshot this volume for later use
+			}
+		}
+	}
+
+	if err := exec.Copy(b.Excludes, copies...); err != nil {
 		return err
 	}
 	for _, run := range runs {
@@ -215,7 +268,7 @@ func (b *Builder) From(node *parser.Node) (string, error) {
 		if err := step.Resolve(children[0]); err != nil {
 			return "", err
 		}
-		if err := b.Run(step, NoopExecutor); err != nil {
+		if err := b.Run(step, NoopExecutor, false); err != nil {
 			return "", err
 		}
 		return b.RunConfig.Image, nil

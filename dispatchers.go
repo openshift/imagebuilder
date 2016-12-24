@@ -364,6 +364,7 @@ func volume(b *Builder, args []string, attributes map[string]bool, flagArgs []st
 			return fmt.Errorf("Volume specified can not be an empty string")
 		}
 		b.RunConfig.Volumes[v] = struct{}{}
+		b.PendingVolumes.Add(v)
 	}
 	return nil
 }

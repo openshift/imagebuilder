@@ -14,6 +14,58 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
+func TestVolumeSet(t *testing.T) {
+	testCases := []struct {
+		inputs    []string
+		changed   []bool
+		result    []string
+		covered   []string
+		uncovered []string
+	}{
+		{
+			inputs:  []string{"/var/lib", "/var"},
+			changed: []bool{true, true},
+			result:  []string{"/var"},
+
+			covered:   []string{"/var/lib", "/var/", "/var"},
+			uncovered: []string{"/var1", "/", "/va"},
+		},
+		{
+			inputs:  []string{"/var", "/", "/"},
+			changed: []bool{true, true, false},
+			result:  []string{""},
+
+			covered: []string{"/var/lib", "/var/", "/var", "/"},
+		},
+		{
+			inputs:  []string{"/var", "/var/lib"},
+			changed: []bool{true, false},
+			result:  []string{"/var"},
+		},
+	}
+	for i, testCase := range testCases {
+		s := VolumeSet{}
+		for j, path := range testCase.inputs {
+			if s.Add(path) != testCase.changed[j] {
+				t.Errorf("%d: adding %d %s should have resulted in change %t", i, j, path, testCase.changed[j])
+			}
+		}
+		if !reflect.DeepEqual(testCase.result, []string(s)) {
+			t.Errorf("%d: got %v", i, s)
+		}
+		for _, path := range testCase.covered {
+			if !s.Covers(path) {
+				t.Errorf("%d: not covered %s", i, path)
+			}
+		}
+		for _, path := range testCase.uncovered {
+			if s.Covers(path) {
+				t.Errorf("%d: covered %s", i, path)
+			}
+		}
+	}
+}
+
 func TestRun(t *testing.T) {
 	f, err := os.Open("dockerclient/testdata/Dockerfile.add")
 	if err != nil {
@@ -36,7 +88,7 @@ func TestRun(t *testing.T) {
 		if err := step.Resolve(child); err != nil {
 			t.Fatal(err)
 		}
-		if err := b.Run(step, LogExecutor); err != nil {
+		if err := b.Run(step, LogExecutor, false); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -52,7 +104,7 @@ type testExecutor struct {
 	Err          error
 }
 
-func (e *testExecutor) Copy(copies ...Copy) error {
+func (e *testExecutor) Copy(excludes []string, copies ...Copy) error {
 	e.Copies = append(e.Copies, copies...)
 	return e.Err
 }
@@ -212,6 +264,26 @@ func TestBuilder(t *testing.T) {
 				Labels: map[string]string{"test": "value"},
 			},
 		},
+		{
+			Dockerfile: "dockerclient/testdata/volume/Dockerfile",
+			From:       "busybox",
+			Image: &docker.Image{
+				ID:     "busybox2",
+				Config: &docker.Config{},
+			},
+			Config: docker.Config{
+				Env: []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+				Volumes: map[string]struct{}{
+					"/var":     struct{}{},
+					"/var/www": struct{}{},
+				},
+			},
+			Copies: []Copy{
+				{Src: []string{"file"}, Dest: "/var/www/", Download: true},
+				{Src: []string{"file"}, Dest: "/var/", Download: true},
+				{Src: []string{"file2"}, Dest: "/var/", Download: true},
+			},
+		},
 	}
 	for i, test := range testCases {
 		data, err := ioutil.ReadFile(test.Dockerfile)
@@ -247,7 +319,7 @@ func TestBuilder(t *testing.T) {
 				lastErr = fmt.Errorf("%d: %d: %s: resolve: %v", i, j, step.Original, err)
 				break
 			}
-			if err := b.Run(step, e); err != nil {
+			if err := b.Run(step, e, false); err != nil {
 				lastErr = fmt.Errorf("%d: %d: %s: run: %v", i, j, step.Original, err)
 				break
 			}

@@ -156,6 +156,8 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node) err
 	e.LogFn("FROM %s", from)
 	glog.V(4).Infof("step: FROM %s", from)
 
+	b.Excludes = e.Excludes
+
 	var sharedMount string
 
 	// create a container to execute in, if necessary
@@ -239,7 +241,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node) err
 // Execute performs all of the provided steps against the initialized container. May be
 // invoked multiple times for a given container.
 func (e *ClientExecutor) Execute(b *imagebuilder.Builder, node *parser.Node) error {
-	for _, child := range node.Children {
+	for i, child := range node.Children {
 		step := b.Step()
 		if err := step.Resolve(child); err != nil {
 			return err
@@ -249,7 +251,9 @@ func (e *ClientExecutor) Execute(b *imagebuilder.Builder, node *parser.Node) err
 			// original may have unescaped %, so perform fmt escaping
 			e.LogFn(strings.Replace(step.Original, "%", "%%", -1))
 		}
-		if err := b.Run(step, e); err != nil {
+		noRunsRemaining := !b.RequiresStart(&parser.Node{Children: node.Children[i+1:]})
+
+		if err := b.Run(step, e, noRunsRemaining); err != nil {
 			return err
 		}
 	}
@@ -303,8 +307,9 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 	if err != nil {
 		return fmt.Errorf("unable to commit build container: %v", err)
 	}
+
 	e.Image = image
-	glog.V(4).Infof("Committed %s to %s", e.Container.ID, e.Image.ID)
+	glog.V(4).Infof("Committed %s to %s", e.Container.ID, image.ID)
 	if e.LogFn != nil {
 		e.LogFn("Done")
 	}
@@ -326,7 +331,7 @@ func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOpti
 			Dest: filepath.Join(e.ContainerTransientMount, strconv.Itoa(i)),
 		})
 	}
-	if err := e.CopyContainer(container, copies...); err != nil {
+	if err := e.CopyContainer(container, nil, copies...); err != nil {
 		return nil, fmt.Errorf("unable to copy transient context into container: %v", err)
 	}
 
@@ -528,17 +533,17 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 }
 
 // Copy implements the executor copy function.
-func (e *ClientExecutor) Copy(copies ...imagebuilder.Copy) error {
-	return e.CopyContainer(e.Container, copies...)
+func (e *ClientExecutor) Copy(excludes []string, copies ...imagebuilder.Copy) error {
+	return e.CopyContainer(e.Container, excludes, copies...)
 }
 
 // CopyContainer copies the provided content into a destination container.
-func (e *ClientExecutor) CopyContainer(container *docker.Container, copies ...imagebuilder.Copy) error {
+func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []string, copies ...imagebuilder.Copy) error {
 	for _, c := range copies {
 		// TODO: reuse source
 		for _, src := range c.Src {
 			glog.V(4).Infof("Archiving %s %t", src, c.Download)
-			r, closer, err := e.Archive(src, c.Dest, c.Download, c.Download)
+			r, closer, err := e.Archive(src, c.Dest, c.Download, c.Download, excludes)
 			if err != nil {
 				return err
 			}
@@ -571,7 +576,7 @@ func (c closers) Close() error {
 	return lastErr
 }
 
-func (e *ClientExecutor) Archive(src, dst string, allowDecompression, allowDownload bool) (io.Reader, io.Closer, error) {
+func (e *ClientExecutor) Archive(src, dst string, allowDecompression, allowDownload bool, excludes []string) (io.Reader, io.Closer, error) {
 	var closer closers
 	var base string
 	var infos []CopyInfo
@@ -601,7 +606,7 @@ func (e *ClientExecutor) Archive(src, dst string, allowDecompression, allowDownl
 		return nil, nil, err
 	}
 
-	options := archiveOptionsFor(infos, dst, e.Excludes)
+	options := archiveOptionsFor(infos, dst, excludes)
 
 	glog.V(4).Infof("Tar of directory %s %#v", base, options)
 	rc, err := archive.TarWithOptions(base, options)
