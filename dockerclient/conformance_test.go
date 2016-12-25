@@ -86,6 +86,9 @@ func TestConformanceInternal(t *testing.T) {
 		{
 			ContextDir: "testdata/wildcard",
 		},
+		{
+			ContextDir: "testdata/volume",
+		},
 	}
 
 	c, err := docker.NewClientFromEnv()
@@ -478,6 +481,7 @@ func normalizeOutputMetadata(a, b *docker.Config) {
 func metadataEqual(a, b *docker.Config) bool {
 	// compare output metadata
 	a.Image, b.Image = "", ""
+	a.Hostname, b.Hostname = "", ""
 	e1, e2 := envMap(a.Env), envMap(b.Env)
 	if !reflect.DeepEqual(e1, e2) {
 		return false
