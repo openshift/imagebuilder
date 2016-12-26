@@ -89,6 +89,9 @@ func TestConformanceInternal(t *testing.T) {
 		{
 			ContextDir: "testdata/volume",
 		},
+		{
+			ContextDir: "testdata/volumerun",
+		},
 	}
 
 	c, err := docker.NewClientFromEnv()
@@ -537,7 +540,7 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 				delete(differs, k)
 				continue
 			}
-			t.Errorf("%s %s differs: %#v\n%#v", a, k, v[0], v[1])
+			t.Errorf("%s %s differs:\n%#v\n%#v", a, k, v[0], v[1])
 		}
 		for k, v := range onlyA {
 			if ignoreFuncs(ignoreFns).Ignore(v, nil) {

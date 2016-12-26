@@ -22,6 +22,7 @@ import (
 
 	"github.com/openshift/imagebuilder"
 	"github.com/openshift/imagebuilder/imageprogress"
+	"io/ioutil"
 )
 
 // Mount represents a binding between the current system and the destination client
@@ -83,6 +84,10 @@ type ClientExecutor struct {
 	// Deferred is a list of operations that must be cleaned up at
 	// the end of execution. Use Release() to handle these.
 	Deferred []func() error
+
+	// Volumes handles saving and restoring volumes after RUN
+	// commands are executed.
+	Volumes *ContainerVolumeTracker
 }
 
 // NewClientExecutor creates a client executor.
@@ -345,7 +350,7 @@ func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOpti
 
 // Release deletes any items started by this executor.
 func (e *ClientExecutor) Release() []error {
-	var errs []error
+	errs := e.Volumes.Release()
 	for _, fn := range e.Deferred {
 		if err := fn(); err != nil {
 			errs = append(errs, err)
@@ -472,6 +477,14 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 	return e.Client.InspectImage(from)
 }
 
+func (e *ClientExecutor) Preserve(path string) error {
+	if e.Volumes == nil {
+		e.Volumes = NewContainerVolumeTracker()
+	}
+	e.Volumes.Add(path)
+	return nil
+}
+
 func (e *ClientExecutor) UnrecognizedInstruction(step *imagebuilder.Step) error {
 	if e.IgnoreUnrecognizedInstructions {
 		e.LogFn("warning: Unknown instruction: %s", strings.ToUpper(step.Command))
@@ -504,8 +517,12 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 		args = append([]string{"/bin/sh", "-c"}, args...)
 	}
 
-	config.Cmd = args
+	if err := e.Volumes.Save(e.Container.ID, e.Client); err != nil {
+		return err
+	}
 
+	config.Cmd = args
+	glog.V(4).Infof("Running %v inside of %s as user %s", config.Cmd, e.Container.ID, config.User)
 	exec, err := e.Client.CreateExec(docker.CreateExecOptions{
 		Cmd:          config.Cmd,
 		Container:    e.Container.ID,
@@ -529,11 +546,21 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	if status.ExitCode != 0 {
 		return fmt.Errorf("running '%s' failed with exit code %d", strings.Join(args, " "), status.ExitCode)
 	}
+
+	if err := e.Volumes.Restore(e.Container.ID, e.Client); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Copy implements the executor copy function.
 func (e *ClientExecutor) Copy(excludes []string, copies ...imagebuilder.Copy) error {
+	// copying content into a volume invalidates the archived state of any given directory
+	for _, copy := range copies {
+		e.Volumes.Invalidate(copy.Dest)
+	}
+
 	return e.CopyContainer(e.Container, excludes, copies...)
 }
 
@@ -641,4 +668,212 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string) *archive
 	}
 	options.ExcludePatterns = excludes
 	return options
+}
+
+// ContainerVolumeTracker manages tracking archives of specific paths inside a container.
+type ContainerVolumeTracker struct {
+	paths map[string]string
+	errs  []error
+}
+
+func NewContainerVolumeTracker() *ContainerVolumeTracker {
+	return &ContainerVolumeTracker{
+		paths: make(map[string]string),
+	}
+}
+
+// Add tracks path unless it already is being tracked.
+func (t *ContainerVolumeTracker) Add(path string) {
+	if _, ok := t.paths[path]; !ok {
+		t.paths[path] = ""
+	}
+}
+
+// Release removes any stored snapshots
+func (t *ContainerVolumeTracker) Release() []error {
+	if t == nil {
+		return nil
+	}
+	for path := range t.paths {
+		t.ReleasePath(path)
+	}
+	return t.errs
+}
+
+func (t *ContainerVolumeTracker) ReleasePath(path string) {
+	if t == nil {
+		return
+	}
+	if archivePath, ok := t.paths[path]; ok && len(archivePath) > 0 {
+		err := os.Remove(archivePath)
+		if err != nil && !os.IsNotExist(err) {
+			t.errs = append(t.errs, err)
+		}
+		glog.V(5).Infof("Releasing path %s (%v)", path, err)
+		t.paths[path] = ""
+	}
+}
+
+func (t *ContainerVolumeTracker) Invalidate(path string) {
+	if t == nil {
+		return
+	}
+	set := imagebuilder.VolumeSet{}
+	set.Add(path)
+	for path := range t.paths {
+		if set.Covers(path) {
+			t.ReleasePath(path)
+		}
+	}
+}
+
+// Save ensures that all paths tracked underneath this container are archived or
+// returns an error.
+func (t *ContainerVolumeTracker) Save(containerID string, client *docker.Client) error {
+	if t == nil {
+		return nil
+	}
+	set := imagebuilder.VolumeSet{}
+	for dest := range t.paths {
+		set.Add(dest)
+	}
+	// remove archive paths that are covered by other paths
+	for dest := range t.paths {
+		if !set.Has(dest) {
+			t.ReleasePath(dest)
+			delete(t.paths, dest)
+		}
+	}
+	for dest, archivePath := range t.paths {
+		if len(archivePath) > 0 {
+			continue
+		}
+		archivePath, err := snapshotPath(dest, containerID, client)
+		if err != nil {
+			return err
+		}
+		t.paths[dest] = archivePath
+	}
+	return nil
+}
+
+// filterTarPipe transforms a tar file as it is streamed, calling fn on each header in the file.
+// If fn returns false, the file is skipped. If an error occurs it is returned.
+func filterTarPipe(w *tar.Writer, r *tar.Reader, fn func(*tar.Header) bool) error {
+	for {
+		h, err := r.Next()
+		if err != nil {
+			return err
+		}
+		if fn(h) {
+			if err := w.WriteHeader(h); err != nil {
+				return err
+			}
+			if _, err := io.Copy(w, r); err != nil {
+				return err
+			}
+		} else {
+			if _, err := io.Copy(ioutil.Discard, r); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// snapshotPath preserves the contents of path in container containerID as a temporary
+// archive, returning either an error or the path of the archived file.
+func snapshotPath(path, containerID string, client *docker.Client) (string, error) {
+	f, err := ioutil.TempFile("", "archived-path")
+	if err != nil {
+		return "", err
+	}
+	glog.V(4).Infof("Snapshot %s for later use under %s", path, f.Name())
+
+	r, w := io.Pipe()
+	tr := tar.NewReader(r)
+	tw := tar.NewWriter(f)
+	go func() {
+		err := filterTarPipe(tw, tr, func(h *tar.Header) bool {
+			if i := strings.Index(h.Name, "/"); i != -1 {
+				h.Name = h.Name[i+1:]
+			}
+			return len(h.Name) > 0
+		})
+		if err == nil || err == io.EOF {
+			tw.Flush()
+			w.Close()
+			glog.V(5).Infof("Snapshot rewritten from %s", path)
+			return
+		}
+		glog.V(5).Infof("Snapshot of %s failed: %v", path, err)
+		w.CloseWithError(err)
+	}()
+
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	err = client.DownloadFromContainer(containerID, docker.DownloadFromContainerOptions{
+		Path:         path,
+		OutputStream: w,
+	})
+	f.Close()
+	if err != nil {
+		os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+// Restore ensures the paths managed by t exactly match the container. This requires running
+// exec as a user that can delete contents from the container. It will return an error if
+// any client operation fails.
+func (t *ContainerVolumeTracker) Restore(containerID string, client *docker.Client) error {
+	if t == nil {
+		return nil
+	}
+	for dest, archivePath := range t.paths {
+		if len(archivePath) == 0 {
+			return fmt.Errorf("path %s does not have an archive and cannot be restored", dest)
+		}
+		glog.V(4).Infof("Restoring contents of %s from %s", dest, archivePath)
+		if !strings.HasSuffix(dest, "/") {
+			dest = dest + "/"
+		}
+		exec, err := client.CreateExec(docker.CreateExecOptions{
+			Container: containerID,
+			Cmd:       []string{"/bin/sh", "-c", "rm -rf $@", "", dest + "*"},
+			User:      "0",
+		})
+		if err != nil {
+			return fmt.Errorf("unable to setup clearing preserved path %s: %v", dest, err)
+		}
+		if err := client.StartExec(exec.ID, docker.StartExecOptions{}); err != nil {
+			return fmt.Errorf("unable to clear preserved path %s: %v", dest, err)
+		}
+		status, err := client.InspectExec(exec.ID)
+		if err != nil {
+			return fmt.Errorf("clearing preserved path %s did not succeed: %v", dest, err)
+		}
+		if status.ExitCode != 0 {
+			return fmt.Errorf("clearing preserved path %s failed with exit code %d", dest, status.ExitCode)
+		}
+		err = func() error {
+			f, err := os.Open(archivePath)
+			if err != nil {
+				return fmt.Errorf("unable to open archive %s for preserved path %s: %v", archivePath, dest, err)
+			}
+			defer f.Close()
+			if err := client.UploadToContainer(containerID, docker.UploadToContainerOptions{
+				InputStream: f,
+				Path:        dest,
+			}); err != nil {
+				return fmt.Errorf("unable to upload preserved contents from %s to %s: %v", archivePath, dest, err)
+			}
+			return nil
+		}()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
