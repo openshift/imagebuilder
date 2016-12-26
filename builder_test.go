@@ -97,11 +97,17 @@ func TestRun(t *testing.T) {
 }
 
 type testExecutor struct {
+	Preserved    []string
 	Copies       []Copy
 	Runs         []Run
 	Configs      []docker.Config
 	Unrecognized []Step
 	Err          error
+}
+
+func (e *testExecutor) Preserve(path string) error {
+	e.Preserved = append(e.Preserved, path)
+	return e.Err
 }
 
 func (e *testExecutor) Copy(excludes []string, copies ...Copy) error {
@@ -282,6 +288,24 @@ func TestBuilder(t *testing.T) {
 				{Src: []string{"file"}, Dest: "/var/www/", Download: true},
 				{Src: []string{"file"}, Dest: "/var/", Download: true},
 				{Src: []string{"file2"}, Dest: "/var/", Download: true},
+			},
+		},
+		{
+			Dockerfile: "dockerclient/testdata/volumerun/Dockerfile",
+			From:       "busybox",
+			Config: docker.Config{
+				Image: "busybox",
+				Volumes: map[string]struct{}{
+					"/var/www": struct{}{},
+				},
+			},
+			Runs: []Run{
+				{Shell: true, Args: []string{"touch /var/www/file3"}},
+			},
+			Copies: []Copy{
+				{Src: []string{"file"}, Dest: "/var/www/", Download: true},
+				{Src: []string{"file2"}, Dest: "/var/www/", Download: true},
+				{Src: []string{"file4"}, Dest: "/var/www/", Download: true},
 			},
 		},
 	}

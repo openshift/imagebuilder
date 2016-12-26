@@ -31,12 +31,18 @@ type Run struct {
 }
 
 type Executor interface {
+	Preserve(path string) error
 	Copy(excludes []string, copies ...Copy) error
 	Run(run Run, config docker.Config) error
 	UnrecognizedInstruction(step *Step) error
 }
 
 type logExecutor struct{}
+
+func (logExecutor) Preserve(path string) error {
+	log.Printf("PRESERVE %s", path)
+	return nil
+}
 
 func (logExecutor) Copy(excludes []string, copies ...Copy) error {
 	for _, c := range copies {
@@ -56,6 +62,10 @@ func (logExecutor) UnrecognizedInstruction(step *Step) error {
 }
 
 type noopExecutor struct{}
+
+func (noopExecutor) Preserve(path string) error {
+	return nil
+}
 
 func (noopExecutor) Copy(excludes []string, copies ...Copy) error {
 	return nil
@@ -91,6 +101,19 @@ func (s *VolumeSet) Add(path string) bool {
 	adjusted = append(adjusted, path)
 	*s = adjusted
 	return true
+}
+
+func (s VolumeSet) Has(path string) bool {
+	if path == "/" {
+		return len(s) == 1 && s[0] == ""
+	}
+	path = strings.TrimSuffix(path, "/")
+	for _, p := range s {
+		if p == path {
+			return true
+		}
+	}
+	return false
 }
 
 func (s VolumeSet) Covers(path string) bool {
@@ -186,13 +209,13 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	runs := b.PendingRuns
 	b.PendingRuns = nil
 
-	// if any VOLUMEs were defined, snapshot their current
-	// contents if we have future runs, or exclude those
-	// locations if not.
+	// Once a VOLUME is defined, future ADD/COPY instructions are
+	// all that may mutate that path. Instruct the executor to preserve
+	// the path. The executor must handle invalidating preserved info.
 	for _, path := range b.PendingVolumes {
-		if b.Volumes.Add(path) {
-			if !noRunsRemaining {
-				// TODO: snapshot this volume for later use
+		if b.Volumes.Add(path) && !noRunsRemaining {
+			if err := exec.Preserve(path); err != nil {
+				return err
 			}
 		}
 	}
