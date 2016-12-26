@@ -50,6 +50,11 @@ type ClientExecutor struct {
 	// IgnoreUnrecognizedInstructions, if true, allows instructions
 	// that are not yet supported to be ignored (will be printed)
 	IgnoreUnrecognizedInstructions bool
+	// StrictVolumeOwnership if true will fail the build if a RUN
+	// command follows a VOLUME command, since this client cannot
+	// guarantee that the restored contents of the VOLUME directory
+	// will have the right permissions.
+	StrictVolumeOwnership bool
 	// TransientMounts are a set of mounts from outside the build
 	// to the inside that will not be part of the final image. Any
 	// content created inside the mount's destinationPath will be
@@ -517,6 +522,9 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 		args = append([]string{"/bin/sh", "-c"}, args...)
 	}
 
+	if e.StrictVolumeOwnership && !e.Volumes.Empty() {
+		return fmt.Errorf("a RUN command was executed after a VOLUME command, which may result in ownership information being lost")
+	}
 	if err := e.Volumes.Save(e.Container.ID, e.Client); err != nil {
 		return err
 	}
@@ -680,6 +688,11 @@ func NewContainerVolumeTracker() *ContainerVolumeTracker {
 	return &ContainerVolumeTracker{
 		paths: make(map[string]string),
 	}
+}
+
+// Empty returns true if the tracker is not watching any paths
+func (t *ContainerVolumeTracker) Empty() bool {
+	return t == nil || len(t.paths) == 0
 }
 
 // Add tracks path unless it already is being tracked.
