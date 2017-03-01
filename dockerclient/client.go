@@ -25,6 +25,11 @@ import (
 	"io/ioutil"
 )
 
+// NewClientFromEnv is exposed to simplify getting a client when vendoring this library.
+func NewClientFromEnv() (*docker.Client, error) {
+	return docker.NewClientFromEnv()
+}
+
 // Mount represents a binding between the current system and the destination client
 type Mount struct {
 	SourcePath      string
