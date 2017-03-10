@@ -49,6 +49,9 @@ type ClientExecutor struct {
 	Excludes []string
 	// Tag is an optional value to tag the resulting built image.
 	Tag string
+	// Additional tags is an optional array of other tags to apply
+	// to the image.
+	AdditionalTags []string
 	// AllowPull when set will pull images that are not present on
 	// the daemon.
 	AllowPull bool
@@ -325,6 +328,21 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 
 	e.Image = image
 	glog.V(4).Infof("Committed %s to %s", e.Container.ID, image.ID)
+
+	if len(e.Tag) > 0 {
+		for _, s := range e.AdditionalTags {
+			repository, tag := docker.ParseRepositoryTag(s)
+			err := e.Client.TagImage(image.ID, docker.TagImageOptions{
+				Repo: repository,
+				Tag:  tag,
+			})
+			if err != nil {
+				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImageExtended(image.ID, docker.RemoveImageOptions{Force: true}) })
+				return fmt.Errorf("unable to tag %q: %v", s, err)
+			}
+		}
+	}
+
 	if e.LogFn != nil {
 		e.LogFn("Done")
 	}

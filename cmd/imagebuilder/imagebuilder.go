@@ -19,12 +19,12 @@ import (
 func main() {
 	log.SetFlags(0)
 	options := dockerclient.NewClientExecutor(nil)
-	var tag string
+	var tags stringSliceFlag
 	var dockerfilePath string
 	var mountSpecs stringSliceFlag
 
-	flag.StringVar(&tag, "t", tag, "The name to assign this image, if any.")
-	flag.StringVar(&tag, "tag", tag, "The name to assign this image, if any.")
+	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
+	flag.Var(&tags, "tag", "The name to assign this image, if any. May be specified multiple times.")
 	flag.StringVar(&dockerfilePath, "f", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&dockerfilePath, "file", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.Var(&mountSpecs, "mount", "An optional list of files and directories to mount during the build. Use SRC:DST syntax for each path.")
@@ -40,7 +40,10 @@ func main() {
 	}
 
 	options.Directory = args[0]
-	options.Tag = tag
+	if len(tags) > 0 {
+		options.Tag = tags[0]
+		options.AdditionalTags = tags[1:]
+	}
 	if len(dockerfilePath) == 0 {
 		dockerfilePath = filepath.Join(options.Directory, "Dockerfile")
 	}
