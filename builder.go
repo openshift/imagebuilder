@@ -188,6 +188,7 @@ func (b *Builder) Step() *Step {
 	dst := make([]string, len(b.Env)+len(b.RunConfig.Env))
 	copy(dst, b.Env)
 	dst = append(dst, b.RunConfig.Env...)
+	dst = append(dst, b.Arguments()...)
 	return &Step{Env: dst}
 }
 
@@ -225,6 +226,7 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	}
 	for _, run := range runs {
 		config := b.Config()
+		config.Env = step.Env
 		if err := exec.Run(run, *config); err != nil {
 			return err
 		}
@@ -406,6 +408,9 @@ func ExportEnv(env []string) string {
 	}
 	out := "export"
 	for _, e := range env {
+		if len(e) == 0 {
+			continue
+		}
 		out += " " + BashQuote(e)
 	}
 	return out + "; "
