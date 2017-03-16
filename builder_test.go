@@ -126,6 +126,7 @@ func (e *testExecutor) UnrecognizedInstruction(step *Step) error {
 
 func TestBuilder(t *testing.T) {
 	testCases := []struct {
+		Args         map[string]string
 		Dockerfile   string
 		From         string
 		Copies       []Copy
@@ -271,6 +272,19 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.args",
+			Args:       map[string]string{"BAR": "first"},
+			From:       "busybox",
+			Config: docker.Config{
+				Image:  "busybox",
+				Env:    []string{"FOO=value", "TEST=", "BAZ=first"},
+				Labels: map[string]string{"test": "value"},
+			},
+			Runs: []Run{
+				{Shell: true, Args: []string{"echo $BAR"}},
+			},
+		},
+		{
 			Dockerfile: "dockerclient/testdata/volume/Dockerfile",
 			From:       "busybox",
 			Image: &docker.Image{
@@ -321,6 +335,7 @@ func TestBuilder(t *testing.T) {
 			continue
 		}
 		b := NewBuilder()
+		b.Args = test.Args
 		from, err := b.From(node)
 		if err != nil {
 			t.Errorf("%d: %v", i, err)

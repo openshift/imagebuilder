@@ -33,6 +33,7 @@ type conformanceTest struct {
 	Dockerfile string
 	Git        string
 	ContextDir string
+	Args       map[string]string
 	Ignore     []ignoreFunc
 	PostClone  func(dir string) error
 }
@@ -83,6 +84,14 @@ func TestConformanceInternal(t *testing.T) {
 		{
 			Dockerfile: "testdata/Dockerfile.add",
 		},
+		{
+			Dockerfile: "testdata/Dockerfile.args",
+			Args:       map[string]string{"BAR": "first"},
+		},
+		/*{ // uncomment when docker allows this
+			Dockerfile: "testdata/Dockerfile.args",
+			Args:       map[string]string{"BAZ": "first"},
+		},*/
 		{
 			ContextDir: "testdata/wildcard",
 		},
@@ -355,7 +364,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			e.Out, e.ErrOut = out, out
 			e.Directory = contextDir
 			e.Tag = nameDirect
-			b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBufferString(testFile), nil)
+			b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBufferString(testFile), test.Args)
 			if err != nil {
 				t.Fatalf("%d: %v", i, err)
 			}
@@ -394,6 +403,10 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		}
 		out := &bytes.Buffer{}
 		nameDocker := fmt.Sprintf(nameFormat, i, "docker", 0)
+		var args []docker.BuildArg
+		for k, v := range test.Args {
+			args = append(args, docker.BuildArg{Name: k, Value: v})
+		}
 		if err := c.BuildImage(docker.BuildImageOptions{
 			Name:                nameDocker,
 			Dockerfile:          dockerfile,
@@ -401,6 +414,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			ForceRmTmpContainer: true,
 			InputStream:         in,
 			OutputStream:        out,
+			BuildArgs:           args,
 		}); err != nil {
 			in.Close()
 			t.Errorf("%d: unable to build Docker image %q: %v\n%s", i, test.Git, err, out)
@@ -418,7 +432,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		e.Out, e.ErrOut = out, out
 		e.Directory = contextDir
 		e.Tag = nameDirect
-		b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBuffer(data), nil)
+		b, node, err := imagebuilder.NewBuilderForReader(bytes.NewBuffer(data), test.Args)
 		if err != nil {
 			t.Fatalf("%d: %v", i, err)
 		}
