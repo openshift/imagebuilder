@@ -21,12 +21,14 @@ func main() {
 	options := dockerclient.NewClientExecutor(nil)
 	var tags stringSliceFlag
 	var dockerfilePath string
+	var imageFrom string
 	var mountSpecs stringSliceFlag
 
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
 	flag.Var(&tags, "tag", "The name to assign this image, if any. May be specified multiple times.")
 	flag.StringVar(&dockerfilePath, "f", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&dockerfilePath, "file", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
+	flag.StringVar(&imageFrom, "from", imageFrom, "An optional FROM to use instead of the one in the Dockerfile.")
 	flag.Var(&mountSpecs, "mount", "An optional list of files and directories to mount during the build. Use SRC:DST syntax for each path.")
 	flag.BoolVar(&options.AllowPull, "allow-pull", true, "Pull the images that are not present.")
 	flag.BoolVar(&options.IgnoreUnrecognizedInstructions, "ignore-unrecognized-instructions", true, "If an unrecognized Docker instruction is encountered, warn but do not fail the build.")
@@ -78,12 +80,12 @@ func main() {
 		dockerfiles = []string{filepath.Join(options.Directory, "Dockerfile")}
 	}
 
-	if err := build(dockerfiles[0], dockerfiles[1:], arguments, options); err != nil {
+	if err := build(dockerfiles[0], dockerfiles[1:], arguments, imageFrom, options); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-func build(dockerfile string, additionalDockerfiles []string, arguments map[string]string, e *dockerclient.ClientExecutor) error {
+func build(dockerfile string, additionalDockerfiles []string, arguments map[string]string, from string, e *dockerclient.ClientExecutor) error {
 	if err := e.DefaultExcludes(); err != nil {
 		return fmt.Errorf("error: Could not parse default .dockerignore: %v", err)
 	}
@@ -105,7 +107,7 @@ func build(dockerfile string, additionalDockerfiles []string, arguments map[stri
 	if err != nil {
 		return err
 	}
-	if err := e.Prepare(b, node); err != nil {
+	if err := e.Prepare(b, node, from); err != nil {
 		return err
 	}
 	if err := e.Execute(b, node); err != nil {

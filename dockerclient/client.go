@@ -128,9 +128,9 @@ func (e *ClientExecutor) DefaultExcludes() error {
 // container if the Dockerfile contains RUN commands. It will cleanup
 // any containers it creates directly, and set the e.Image.ID field
 // to the generated image.
-func (e *ClientExecutor) Build(b *imagebuilder.Builder, node *parser.Node) error {
+func (e *ClientExecutor) Build(b *imagebuilder.Builder, node *parser.Node, from string) error {
 	defer e.Release()
-	if err := e.Prepare(b, node); err != nil {
+	if err := e.Prepare(b, node, from); err != nil {
 		return err
 	}
 	if err := e.Execute(b, node); err != nil {
@@ -139,11 +139,15 @@ func (e *ClientExecutor) Build(b *imagebuilder.Builder, node *parser.Node) error
 	return e.Commit(b)
 }
 
-func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node) error {
+func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, from string) error {
+	var err error
+
 	// identify the base image
-	from, err := b.From(node)
-	if err != nil {
-		return err
+	if len(from) == 0 {
+		from, err = b.From(node)
+		if err != nil {
+			return err
+		}
 	}
 	// load the image
 	if e.Image == nil {
