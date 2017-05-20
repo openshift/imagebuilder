@@ -344,6 +344,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImageExtended(image.ID, docker.RemoveImageOptions{Force: true}) })
 				return fmt.Errorf("unable to tag %q: %v", s, err)
 			}
+			e.LogFn("Tagged as %s", s)
 		}
 	}
 
