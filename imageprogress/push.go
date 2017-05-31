@@ -9,6 +9,8 @@ import (
 // on push progress of a Docker image. It only reports when the state of the
 // different layers has changed and uses time thresholds to limit the
 // rate of the reports.
+//
+// WARNING: may leak a goroutine, do not use in long-running processes.
 func NewPushWriter(printFn func(string)) io.Writer {
 	return newWriter(pushReporter(printFn), pushLayersChanged)
 }
