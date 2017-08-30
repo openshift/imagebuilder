@@ -337,6 +337,14 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "volumerun",
 			ContextDir: "testdata/volumerun",
 		},
+		{
+			Name:       "novolume",
+			Dockerfile: "testdata/Dockerfile.novolume",
+		},
+		{
+			Name:       "novolumenorun",
+			Dockerfile: "testdata/Dockerfile.novolumenorun",
+		},
 	}
 
 	for i, test := range testCases {
