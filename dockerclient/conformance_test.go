@@ -184,7 +184,7 @@ func TestTransientMount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Build(b, node); err != nil {
+	if err := e.Build(b, node, ""); err != nil {
 		t.Fatalf("unable to build image: %v", err)
 	}
 	if !strings.Contains(out.String(), "ENV name=value\n") {
@@ -368,7 +368,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			if err != nil {
 				t.Fatalf("%d: %v", i, err)
 			}
-			if err := e.Build(b, node); err != nil {
+			if err := e.Build(b, node, ""); err != nil {
 				t.Errorf("%d: failed to build step %d in dockerfile %q: %s\n%s", i, j, dockerfilePath, steps[j].Original, out)
 				break
 			}
@@ -436,7 +436,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		if err != nil {
 			t.Fatalf("%d: %v", i, err)
 		}
-		if err := e.Build(b, node); err != nil {
+		if err := e.Build(b, node, ""); err != nil {
 			t.Errorf("%d: failed to build complete image in %q: %v\n%s", i, input, err, out)
 		} else {
 			if !equivalentImages(
