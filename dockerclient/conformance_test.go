@@ -30,6 +30,7 @@ import (
 var compareLayers = flag.Bool("compare-layers", false, "If true, compare each generated layer for equivalence")
 
 type conformanceTest struct {
+	Name       string
 	Dockerfile string
 	Git        string
 	ContextDir string
@@ -66,6 +67,7 @@ type conformanceTest struct {
 func TestConformanceInternal(t *testing.T) {
 	testCases := []conformanceTest{
 		{
+			Name:       "directory",
 			ContextDir: "testdata/dir",
 		},
 		// TODO: Fix this test
@@ -73,18 +75,23 @@ func TestConformanceInternal(t *testing.T) {
 		// 	ContextDir: "testdata/ignore",
 		// },
 		{
+			Name:       "environment",
 			Dockerfile: "testdata/Dockerfile.env",
 		},
 		{
+			Name:       "edgecases",
 			Dockerfile: "testdata/Dockerfile.edgecases",
 		},
 		{
+			Name:       "exposed_default",
 			Dockerfile: "testdata/Dockerfile.exposedefault",
 		},
 		{
+			Name:       "add",
 			Dockerfile: "testdata/Dockerfile.add",
 		},
 		{
+			Name:       "args",
 			Dockerfile: "testdata/Dockerfile.args",
 			Args:       map[string]string{"BAR": "first"},
 		},
@@ -93,23 +100,27 @@ func TestConformanceInternal(t *testing.T) {
 			Args:       map[string]string{"BAZ": "first"},
 		},*/
 		{
+			Name:       "wildcard",
 			ContextDir: "testdata/wildcard",
 		},
 		{
+			Name:       "volume",
 			ContextDir: "testdata/volume",
 		},
 		{
+			Name:       "volumerun",
 			ContextDir: "testdata/volumerun",
 		},
 	}
 
-	c, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	for i, test := range testCases {
-		conformanceTester(t, c, test, i, *compareLayers)
+		t.Run(test.Name, func(t *testing.T) {
+			c, err := docker.NewClientFromEnv()
+			if err != nil {
+				t.Fatal(err)
+			}
+			conformanceTester(t, c, test, i, *compareLayers)
+		})
 	}
 }
 
@@ -118,10 +129,12 @@ func TestConformanceInternal(t *testing.T) {
 func TestConformanceExternal(t *testing.T) {
 	testCases := []conformanceTest{
 		{
+			Name: "ownership change under COPY",
 			// Tests user ownership change under COPY
 			Git: "https://github.com/openshift/ruby-hello-world.git",
 		},
 		{
+			Name: "dockerfile custom location",
 			// Tests Non-default location dockerfile
 			Dockerfile: "Dockerfile.build",
 			Git:        "https://github.com/docker-library/hello-world.git",
@@ -130,6 +143,7 @@ func TestConformanceExternal(t *testing.T) {
 			},
 		},
 		{
+			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
 			ContextDir: "9.3",
 			Dockerfile: "9.3/Dockerfile",
@@ -151,13 +165,14 @@ func TestConformanceExternal(t *testing.T) {
 		},
 	}
 
-	c, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	for i, test := range testCases {
-		conformanceTester(t, c, test, i, *compareLayers)
+		t.Run(test.Name, func(t *testing.T) {
+			c, err := docker.NewClientFromEnv()
+			if err != nil {
+				t.Fatal(err)
+			}
+			conformanceTester(t, c, test, i, *compareLayers)
+		})
 	}
 }
 
