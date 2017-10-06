@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	dockertypes "github.com/docker/engine-api/types"
+	dockertypes "github.com/docker/docker/api/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
 
