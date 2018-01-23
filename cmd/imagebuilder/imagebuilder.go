@@ -24,8 +24,11 @@ func main() {
 	var imageFrom string
 	var mountSpecs stringSliceFlag
 
+	arguments := stringMapFlag{}
+
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
 	flag.Var(&tags, "tag", "The name to assign this image, if any. May be specified multiple times.")
+	flag.Var(&arguments, "build-arg", "An optional list of build-time variables usable as ARG in Dockerfile. Use --build-arg ARG1=VAL1 --build-arg ARG2=VAL2 syntax for passing mutliple build args.")
 	flag.StringVar(&dockerfilePath, "f", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&dockerfilePath, "file", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&imageFrom, "from", imageFrom, "An optional FROM to use instead of the one in the Dockerfile.")
@@ -71,9 +74,6 @@ func main() {
 			fmt.Fprintf(options.ErrOut, "--> %s\n", fmt.Sprintf(format, args...))
 		}
 	}
-
-	// Accept ARGS on the command line
-	arguments := make(map[string]string)
 
 	dockerfiles := filepath.SplitList(dockerfilePath)
 	if len(dockerfiles) == 0 {
@@ -136,4 +136,20 @@ func (f *stringSliceFlag) Set(s string) error {
 
 func (f *stringSliceFlag) String() string {
 	return strings.Join(*f, " ")
+}
+
+type stringMapFlag map[string]string
+
+func (f *stringMapFlag) String() string {
+    args := []string{}
+    for k, v := range *f {
+        args = append(args, strings.Join([]string{k, v}, "="))
+    }
+    return strings.Join(args, " ")
+}
+
+func (f *stringMapFlag) Set(value string) error {
+    kv := strings.Split(value, "=")
+    (*f)[kv[0]] = kv[1]
+    return nil
 }
