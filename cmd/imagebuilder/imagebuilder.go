@@ -28,7 +28,7 @@ func main() {
 
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
 	flag.Var(&tags, "tag", "The name to assign this image, if any. May be specified multiple times.")
-	flag.Var(&arguments, "build-arg", "An optional list of build-time variables usable as ARG in Dockerfile. Use --build-arg ARG1=VAL1 --build-arg ARG2=VAL2 syntax for passing mutliple build args.")
+	flag.Var(&arguments, "build-arg", "An optional list of build-time variables usable as ARG in Dockerfile. Use --build-arg ARG1=VAL1 --build-arg ARG2=VAL2 syntax for passing multiple build args.")
 	flag.StringVar(&dockerfilePath, "f", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&dockerfilePath, "file", dockerfilePath, "An optional path to a Dockerfile to use. You may pass multiple docker files using the operating system delimiter.")
 	flag.StringVar(&imageFrom, "from", imageFrom, "An optional FROM to use instead of the one in the Dockerfile.")
