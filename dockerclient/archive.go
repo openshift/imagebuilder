@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
+	"github.com/docker/docker/pkg/idtools"
 	"github.com/golang/glog"
 )
 
@@ -299,7 +300,9 @@ func archiveFromFile(file string, src, dst string, excludes []string) (io.Reader
 
 func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string) *archive.TarOptions {
 	dst = trimLeadingPath(dst)
-	options := &archive.TarOptions{}
+	options := &archive.TarOptions{
+		ChownOpts: &idtools.IDPair{UID: 0, GID: 0},
+	}
 	pm, err := fileutils.NewPatternMatcher(excludes)
 	if err != nil {
 		return options
