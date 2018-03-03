@@ -8,10 +8,9 @@ import "os"
 // on build number. @jhowardmsft
 var lcowSupported = false
 
-// InitLCOW sets whether LCOW is supported or not
-func InitLCOW(experimental bool) {
+func init() {
 	// LCOW initialization
-	if experimental && os.Getenv("LCOW_SUPPORTED") != "" {
+	if os.Getenv("LCOW_SUPPORTED") != "" {
 		lcowSupported = true
 	}
 

@@ -18,7 +18,7 @@ func (s *QuotedString) Type() string {
 }
 
 func (s *QuotedString) String() string {
-	return *s.value
+	return string(*s.value)
 }
 
 func trimQuotes(value string) string {
