@@ -38,7 +38,7 @@
   branch = "openshift-3.9"
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "461a63e0851f0ae3c0410b5c93124aacecada593"
+  revision = "7511300f03c521cfc8e07e88ea8c915add790f50"
   source = "https://github.com/openshift/go-dockerclient.git"
 
 [[projects]]
