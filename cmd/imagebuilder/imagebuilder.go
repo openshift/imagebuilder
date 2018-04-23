@@ -23,6 +23,7 @@ func main() {
 	var target string
 	var dockerfilePath string
 	var imageFrom string
+	var privileged bool
 	var mountSpecs stringSliceFlag
 
 	arguments := stringMapFlag{}
@@ -38,6 +39,7 @@ func main() {
 	flag.BoolVar(&options.AllowPull, "allow-pull", true, "Pull the images that are not present.")
 	flag.BoolVar(&options.IgnoreUnrecognizedInstructions, "ignore-unrecognized-instructions", true, "If an unrecognized Docker instruction is encountered, warn but do not fail the build.")
 	flag.BoolVar(&options.StrictVolumeOwnership, "strict-volume-ownership", false, "Due to limitations in docker `cp`, owner permissions on volumes are lost. This flag will fail builds that might fall victim to this.")
+	flag.BoolVar(&privileged, "privileged", false, "Builds run as privileged containers instead of restricted containers.")
 
 	flag.Parse()
 
@@ -53,6 +55,13 @@ func main() {
 	}
 	if len(dockerfilePath) == 0 {
 		dockerfilePath = filepath.Join(options.Directory, "Dockerfile")
+	}
+
+	if privileged {
+		if options.HostConfig == nil {
+			options.HostConfig = &docker.HostConfig{}
+		}
+		options.HostConfig.Privileged = true
 	}
 
 	var mounts []dockerclient.Mount
@@ -155,15 +164,15 @@ func (f *stringSliceFlag) String() string {
 type stringMapFlag map[string]string
 
 func (f *stringMapFlag) String() string {
-    args := []string{}
-    for k, v := range *f {
-        args = append(args, strings.Join([]string{k, v}, "="))
-    }
-    return strings.Join(args, " ")
+	args := []string{}
+	for k, v := range *f {
+		args = append(args, strings.Join([]string{k, v}, "="))
+	}
+	return strings.Join(args, " ")
 }
 
 func (f *stringMapFlag) Set(value string) error {
-    kv := strings.Split(value, "=")
-    (*f)[kv[0]] = kv[1]
-    return nil
+	kv := strings.Split(value, "=")
+	(*f)[kv[0]] = kv[1]
+	return nil
 }
