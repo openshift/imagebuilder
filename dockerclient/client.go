@@ -257,9 +257,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 				}
 				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveVolume(volumeName) })
 				sharedMount = v.Mountpoint
-				opts.HostConfig = &docker.HostConfig{
-					Binds: []string{volumeName + ":" + e.ContainerTransientMount},
-				}
+				opts.HostConfig.Binds = append(opts.HostConfig.Binds, volumeName+":"+e.ContainerTransientMount)
 			}
 
 			// TODO: windows support
@@ -289,6 +287,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			opts.HostConfig.Binds = append(originalBinds, binds...)
 		}
 
+		glog.V(4).Infof("Creating container with %#v %#v", opts.Config, opts.HostConfig)
 		container, err := e.Client.CreateContainer(opts)
 		if err != nil {
 			return fmt.Errorf("unable to create build container: %v", err)
