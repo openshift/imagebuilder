@@ -161,6 +161,45 @@ func (e *ClientExecutor) WithName(name string) *ClientExecutor {
 	return child
 }
 
+// Stages executes all of the provided stages, starting from the base image. It returns the executor of the last stage
+// or an error if a stage fails.
+func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Stages, from string) (*ClientExecutor, error) {
+	var stageExecutor *ClientExecutor
+	for i, stage := range stages {
+		stageExecutor = e.WithName(stage.Name)
+
+		var stageFrom string
+		if i == 0 {
+			stageFrom = from
+		} else {
+			from, err := b.From(stage.Node)
+			if err != nil {
+				return nil, err
+			}
+			if prereq := e.Named[from]; prereq != nil {
+				b, ok := stages.ByName(from)
+				if !ok {
+					return nil, fmt.Errorf("error: Unable to find stage %s builder", from)
+				}
+				stageExecutor.Image = &docker.Image{
+					Config: b.Builder.Config(),
+				}
+				stageExecutor.Container = prereq.Container
+				glog.V(4).Infof("Using previous stage %s as image: %#v", from, stageExecutor.Image.Config)
+			}
+			stageFrom = from
+		}
+
+		if err := stageExecutor.Prepare(stage.Builder, stage.Node, stageFrom); err != nil {
+			return nil, err
+		}
+		if err := stageExecutor.Execute(stage.Builder, stage.Node); err != nil {
+			return nil, err
+		}
+	}
+	return stageExecutor, nil
+}
+
 // Build is a helper method to perform a Docker build against the
 // provided Docker client. It will load the image if not specified,
 // create a container if one does not already exist, and start a
@@ -188,6 +227,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			return err
 		}
 	}
+
 	// load the image
 	if e.Image == nil {
 		if from == imagebuilder.NoBaseImageSpecifier {

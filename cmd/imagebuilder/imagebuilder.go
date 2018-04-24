@@ -133,21 +133,12 @@ func build(dockerfile string, additionalDockerfiles []string, arguments map[stri
 		return fmt.Errorf("error: The target %q was not found in the provided Dockerfile", target)
 	}
 
-	var stageExecutor *dockerclient.ClientExecutor
-	for i, stage := range stages {
-		stageExecutor = e.WithName(stage.Name)
-		var stageFrom string
-		if i == 0 {
-			stageFrom = from
-		}
-		if err := stageExecutor.Prepare(stage.Builder, stage.Node, stageFrom); err != nil {
-			return err
-		}
-		if err := stageExecutor.Execute(stage.Builder, stage.Node); err != nil {
-			return err
-		}
+	lastExecutor, err := e.Stages(b, stages, from)
+	if err != nil {
+		return err
 	}
-	return stageExecutor.Commit(stages[len(stages)-1].Builder)
+
+	return lastExecutor.Commit(stages[len(stages)-1].Builder)
 }
 
 type stringSliceFlag []string
