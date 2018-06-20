@@ -718,20 +718,20 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 			return false
 		}
 		for k, v := range differs {
-			if ignoreFuncs(ignoreFns).Ignore(v[0], v[1]) {
+			if ignoreFuncs(ignoreFns).Ignore(v[0].Header, v[1].Header) {
 				delete(differs, k)
 				continue
 			}
-			t.Errorf("%s %s differs:\n%#v\n%#v", a, k, v[0], v[1])
+			t.Errorf("%s %s differs:\n%#v\n%#v", a, k, v[0].Header, v[1].Header)
 		}
 		for k, v := range onlyA {
-			if ignoreFuncs(ignoreFns).Ignore(v, nil) {
+			if ignoreFuncs(ignoreFns).Ignore(v.Header, nil) {
 				delete(onlyA, k)
 				continue
 			}
 		}
 		for k, v := range onlyB {
-			if ignoreFuncs(ignoreFns).Ignore(nil, v) {
+			if ignoreFuncs(ignoreFns).Ignore(nil, v.Header) {
 				delete(onlyB, k)
 				continue
 			}
@@ -812,7 +812,7 @@ func ignoreDockerfileSize(dockerfile string) ignoreFunc {
 // compareImageFS exports the file systems of two images and returns a map
 // of files that differ in any way (modification time excluded), only exist in
 // image A, or only existing in image B.
-func compareImageFS(c *docker.Client, a, b string) (differ map[string][]*tar.Header, onlyA, onlyB map[string]*tar.Header, err error) {
+func compareImageFS(c *docker.Client, a, b string) (differ map[string][]tarHeader, onlyA, onlyB map[string]tarHeader, err error) {
 	fsA, err := imageFSMetadata(c, a)
 	if err != nil {
 		return nil, nil, nil, err
@@ -821,8 +821,8 @@ func compareImageFS(c *docker.Client, a, b string) (differ map[string][]*tar.Hea
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	differ = make(map[string][]*tar.Header)
-	onlyA = make(map[string]*tar.Header)
+	differ = make(map[string][]tarHeader)
+	onlyA = make(map[string]tarHeader)
 	onlyB = fsB
 	for k, v1 := range fsA {
 		v2, ok := fsB[k]
@@ -835,14 +835,26 @@ func compareImageFS(c *docker.Client, a, b string) (differ map[string][]*tar.Hea
 		v1.ModTime = time.Time{}
 		v2.ModTime = time.Time{}
 		if !reflect.DeepEqual(v1, v2) {
-			differ[k] = []*tar.Header{v1, v2}
+			differ[k] = []tarHeader{v1, v2}
 		}
 	}
 	return differ, onlyA, onlyB, nil
 }
 
+type tarHeader struct {
+	*tar.Header
+}
+
+func (h tarHeader) String() string {
+	th := h.Header
+	if th == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("<%d %s>", th.Size, th.FileInfo().Mode())
+}
+
 // imageFSMetadata creates a container and reads the filesystem metadata out of the archive.
-func imageFSMetadata(c *docker.Client, name string) (map[string]*tar.Header, error) {
+func imageFSMetadata(c *docker.Client, name string) (map[string]tarHeader, error) {
 	container, err := c.CreateContainer(docker.CreateContainerOptions{Name: name + "-export", Config: &docker.Config{Image: name}})
 	if err != nil {
 		return nil, err
@@ -850,7 +862,7 @@ func imageFSMetadata(c *docker.Client, name string) (map[string]*tar.Header, err
 	defer c.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, RemoveVolumes: true, Force: true})
 
 	ch := make(chan struct{})
-	result := make(map[string]*tar.Header)
+	result := make(map[string]tarHeader)
 	r, w := io.Pipe()
 	go func() {
 		defer close(ch)
@@ -865,7 +877,7 @@ func imageFSMetadata(c *docker.Client, name string) (map[string]*tar.Header, err
 				}
 				break
 			}
-			result[h.Name] = h
+			result[h.Name] = tarHeader{h}
 		}
 	}()
 	if err := c.ExportContainer(docker.ExportContainerOptions{ID: container.ID, OutputStream: w}); err != nil {
