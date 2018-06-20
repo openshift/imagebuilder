@@ -188,6 +188,16 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "directory",
 			ContextDir: "testdata/dir",
 		},
+		{
+			Name:       "directory with slash",
+			ContextDir: "testdata/overlapdir",
+			Dockerfile: "Dockerfile.with_slash",
+		},
+		{
+			Name:       "directory without slash",
+			ContextDir: "testdata/overlapdir",
+			Dockerfile: "Dockerfile.without_slash",
+		},
 		// TODO: Fix this test
 		// {
 		// 	ContextDir: "testdata/ignore",
@@ -423,19 +433,23 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			}
 		}
 
-	case len(test.Dockerfile) > 0:
+	case len(test.ContextDir) > 0:
+		input = filepath.Join(test.ContextDir, dockerfile)
+		dockerfilePath = filepath.Join(test.ContextDir, "Dockerfile")
+		contextDir = test.ContextDir
+		dir = test.ContextDir
+
+		if len(test.Dockerfile) > 0 {
+			dockerfilePath = filepath.Join(dir, test.Dockerfile)
+		}
+
+	default:
 		input = dockerfile
 		dockerfilePath = filepath.Join(dir, "Dockerfile")
 		if _, err := fileutils.CopyFile(filepath.Join("", dockerfile), dockerfilePath); err != nil {
 			t.Fatal(err)
 		}
 		dockerfile = "Dockerfile"
-
-	default:
-		input = filepath.Join(test.ContextDir, dockerfile)
-		dockerfilePath = input
-		contextDir = test.ContextDir
-		dir = test.ContextDir
 	}
 
 	// read the dockerfile

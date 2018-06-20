@@ -21,6 +21,12 @@ type CopyInfo struct {
 
 // CalcCopyInfo identifies the source files selected by a Dockerfile ADD or COPY instruction.
 func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, error) {
+	explicitDir := origPath == "." || origPath == "/" || strings.HasSuffix(origPath, "/.") || strings.HasSuffix(origPath, "/")
+	// all CopyInfo resulting from this call will have FromDir set to explicitDir
+	return calcCopyInfo(origPath, rootPath, allowWildcards, explicitDir)
+}
+
+func calcCopyInfo(origPath, rootPath string, allowWildcards, explicitDir bool) ([]CopyInfo, error) {
 	origPath = trimLeadingPath(origPath)
 	// Deal with wildcards
 	if allowWildcards && containsWildcards(origPath) {
@@ -40,7 +46,7 @@ func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, e
 
 			// Note we set allowWildcards to false in case the name has
 			// a * in it
-			subInfos, err := CalcCopyInfo(trimLeadingPath(strings.TrimPrefix(path, rootPath)), rootPath, false)
+			subInfos, err := calcCopyInfo(trimLeadingPath(strings.TrimPrefix(path, rootPath)), rootPath, false, explicitDir)
 			if err != nil {
 				return err
 			}
@@ -60,7 +66,7 @@ func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, e
 			return nil, err
 		}
 		for _, info := range infos {
-			copyInfos = append(copyInfos, CopyInfo{FileInfo: info, Path: info.Name(), FromDir: true})
+			copyInfos = append(copyInfos, CopyInfo{FileInfo: info, Path: info.Name(), FromDir: explicitDir})
 		}
 		return copyInfos, nil
 	}
@@ -72,7 +78,7 @@ func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, e
 	}
 
 	origPath = trimTrailingDot(origPath)
-	return []CopyInfo{{FileInfo: fi, Path: origPath}}, nil
+	return []CopyInfo{{FileInfo: fi, Path: origPath, FromDir: explicitDir}}, nil
 }
 
 func DownloadURL(src, dst, tempDir string) ([]CopyInfo, string, error) {
@@ -129,6 +135,20 @@ func trimLeadingPath(origPath string) string {
 	}
 	origPath = strings.TrimPrefix(origPath, "."+string(os.PathSeparator))
 	return origPath
+}
+
+func ensureTrailingSlash(origPath string) string {
+	if !strings.HasSuffix(origPath, "/") {
+		origPath += "/"
+	}
+	return origPath
+}
+
+func trimTrailingSlash(origPath string) string {
+	if origPath == "/" {
+		return origPath
+	}
+	return strings.TrimSuffix(origPath, "/")
 }
 
 func trimTrailingDot(origPath string) string {
