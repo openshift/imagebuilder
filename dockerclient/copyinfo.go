@@ -23,7 +23,11 @@ type CopyInfo struct {
 func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, error) {
 	explicitDir := origPath == "." || origPath == "/" || strings.HasSuffix(origPath, "/.") || strings.HasSuffix(origPath, "/")
 	// all CopyInfo resulting from this call will have FromDir set to explicitDir
-	return calcCopyInfo(origPath, rootPath, allowWildcards, explicitDir)
+	infos, err := calcCopyInfo(origPath, rootPath, allowWildcards, explicitDir)
+	if err != nil {
+		return nil, err
+	}
+	return infos, nil
 }
 
 func calcCopyInfo(origPath, rootPath string, allowWildcards, explicitDir bool) ([]CopyInfo, error) {
@@ -58,8 +62,18 @@ func calcCopyInfo(origPath, rootPath string, allowWildcards, explicitDir bool) (
 		return copyInfos, nil
 	}
 
+	// Must be a dir or a file
+	fi, err := os.Stat(filepath.Join(rootPath, origPath))
+	if err != nil {
+		return nil, err
+	}
+
 	// flatten the root directory so we can rebase it
 	if origPath == "." {
+		if !fi.IsDir() {
+			// we want to mount a single file as input
+			return []CopyInfo{{FileInfo: fi, Path: origPath, FromDir: false}}, nil
+		}
 		var copyInfos []CopyInfo
 		infos, err := ioutil.ReadDir(rootPath)
 		if err != nil {
@@ -69,12 +83,6 @@ func calcCopyInfo(origPath, rootPath string, allowWildcards, explicitDir bool) (
 			copyInfos = append(copyInfos, CopyInfo{FileInfo: info, Path: info.Name(), FromDir: explicitDir})
 		}
 		return copyInfos, nil
-	}
-
-	// Must be a dir or a file
-	fi, err := os.Stat(filepath.Join(rootPath, origPath))
-	if err != nil {
-		return nil, err
 	}
 
 	origPath = trimTrailingDot(origPath)

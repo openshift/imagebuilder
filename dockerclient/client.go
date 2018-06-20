@@ -458,7 +458,7 @@ func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOpti
 		source := mount.SourcePath
 		copies = append(copies, imagebuilder.Copy{
 			FromFS: true,
-			Src:    []string{source},
+			Src:    []string{filepath.Join(e.Directory, source)},
 			Dest:   filepath.Join(e.ContainerTransientMount, strconv.Itoa(i)),
 		})
 	}
@@ -730,7 +730,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 	for _, c := range copies {
 		// TODO: reuse source
 		for _, src := range c.Src {
-			glog.V(4).Infof("Archiving %s %t", src, c.Download)
+			glog.V(4).Infof("Archiving %s download=%t fromFS=%t", src, c.Download, c.FromFS)
 			var r io.Reader
 			var closer io.Closer
 			var err error

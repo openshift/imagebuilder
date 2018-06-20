@@ -60,7 +60,7 @@ func TestMount(t *testing.T) {
 
 	out := &bytes.Buffer{}
 	e.Out, e.ErrOut = out, out
-	e.Directory = tmpDir
+	e.Directory = "."
 	e.Tag = filepath.Base(tmpDir)
 	e.TransientMounts = []Mount{
 		{SourcePath: "testdata/volume/", DestinationPath: "/tmp/test"},

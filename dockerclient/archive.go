@@ -156,18 +156,28 @@ func archiveFromDisk(directory string, src, dst string, allowDownload bool, excl
 	if filepath.IsAbs(src) {
 		src, err = filepath.Rel(filepath.Dir(src), src)
 		if err != nil {
+			glog.V(4).Infof("DEBUG: bail %v", err)
 			return nil, nil, err
 		}
 	}
 
 	infos, err := CalcCopyInfo(src, directory, true)
 	if err != nil {
+		glog.V(4).Infof("DEBUG: bail %v", err)
 		return nil, nil, err
+	}
+
+	// special case when we are archiving a single file at the root
+	if len(infos) == 1 && !infos[0].FileInfo.IsDir() && (infos[0].Path == "." || infos[0].Path == "/") {
+		glog.V(5).Infof("Archiving a file instead of a directory from %s", directory)
+		infos[0].Path = filepath.Base(directory)
+		infos[0].FromDir = false
+		directory = filepath.Dir(directory)
 	}
 
 	options := archiveOptionsFor(infos, dst, excludes)
 
-	glog.V(4).Infof("Tar of directory %s %#v", directory, options)
+	glog.V(4).Infof("Tar of %s %#v", directory, options)
 	rc, err := archive.TarWithOptions(directory, options)
 	return rc, rc, err
 }
@@ -357,10 +367,12 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string) *archive
 	options := &archive.TarOptions{
 		ChownOpts: &idtools.IDPair{UID: 0, GID: 0},
 	}
+
 	pm, err := fileutils.NewPatternMatcher(excludes)
 	if err != nil {
 		return options
 	}
+
 	for _, info := range infos {
 		if ok, _ := pm.Matches(info.Path); ok {
 			continue
@@ -397,9 +409,11 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string) *archive
 			// mapping what is probably a file to a non-root directory ([Dockerfile] -> [dir/Dockerfile])
 			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))
 		default:
-			// no rebasing necessary
+			// a single file mapped to another single file ([Dockerfile] -> [Dockerfile.2])
+			options.RebaseNames[infoPath] = dst
 		}
 	}
+
 	options.ExcludePatterns = excludes
 	return options
 }
