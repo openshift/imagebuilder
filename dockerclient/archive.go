@@ -156,14 +156,12 @@ func archiveFromDisk(directory string, src, dst string, allowDownload bool, excl
 	if filepath.IsAbs(src) {
 		src, err = filepath.Rel(filepath.Dir(src), src)
 		if err != nil {
-			glog.V(4).Infof("DEBUG: bail %v", err)
 			return nil, nil, err
 		}
 	}
 
 	infos, err := CalcCopyInfo(src, directory, true)
 	if err != nil {
-		glog.V(4).Infof("DEBUG: bail %v", err)
 		return nil, nil, err
 	}
 
