@@ -275,7 +275,7 @@ func archiveFromFile(file string, src, dst string, excludes []string) (io.Reader
 }
 
 func archiveFromContainer(in io.Reader, src, dst string, excludes []string) (io.Reader, string, error) {
-	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, true)
+	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, false)
 	if err != nil {
 		return nil, "", err
 	}
