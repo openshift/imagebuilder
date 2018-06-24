@@ -87,6 +87,69 @@ func TestMount(t *testing.T) {
 	}
 }
 
+func TestCopyFrom(t *testing.T) {
+	c, err := docker.NewClientFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		name   string
+		create string
+		copy   string
+		extra  string
+		expect string
+	}{
+		{name: "copy file to root", create: "touch /a /b", copy: "/a /", expect: "[[ -f /a ]]"},
+		{name: "copy file to same file", create: "touch /a", copy: "/a /a", expect: "[[ -f /a ]]"},
+		{name: "copy file to workdir", create: "touch /a", extra: "WORKDIR /b", copy: "/a .", expect: "[[ -f /b/a ]]"},
+		{name: "copy file to workdir rename", create: "touch /a", extra: "WORKDIR /b", copy: "/a ./b", expect: "[[ -f /b/b ]]"},
+		{name: "copy folder contents to higher level", create: "mkdir -p /a/b && touch /a/b/1 /a/b/2", copy: "/a/b/ /b/", expect: "[[ -f /b/1 && -f /b/2 && ! -e /a ]]"},
+		{name: "copy wildcard folder contents to higher level", create: "mkdir -p /a/b && touch /a/b/1 /a/b/2", copy: "/a/b/* /b/", expect: "ls -al /b/1 /b/2 /b && ! ls -al /a /b/a /b/b"},
+		{name: "copy folder with dot contents to higher level", create: "mkdir -p /a/b && touch /a/b/1 /a/b/2", copy: "/a/b/. /b/", expect: "ls -al /b/1 /b/2 /b && ! ls -al /a /b/a /b/b"},
+		{name: "copy root file to different root name", create: "touch /b", copy: "/b /a", expect: "ls -al /a && ! ls -al /b"},
+		{name: "copy nested file to different root name", create: "mkdir -p /a && touch /a/b", copy: "/a/b /a", expect: "ls -al /a && ! ls -al /b"},
+		{name: "copy file to deeper directory with explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c/", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},
+		{name: "copy file to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c", expect: "ls -al /a/b/c && ! ls -al /a/b/1"},
+		{name: "copy directory to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a /a/b/c", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},
+	}
+	for i, testCase := range testCases {
+		name := fmt.Sprintf("%d", i)
+		if len(testCase.name) > 0 {
+			name = testCase.name
+		}
+		test := testCase
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			e := NewClientExecutor(c)
+			defer e.Release()
+
+			out := &bytes.Buffer{}
+			e.Out, e.ErrOut = out, out
+			b := imagebuilder.NewBuilder(nil)
+			dockerfile := fmt.Sprintf(`
+				FROM busybox AS base
+				RUN %s
+				FROM busybox
+				%s
+				COPY --from=base %s
+				RUN %s
+			`, test.create, test.extra, test.copy, test.expect,
+			)
+			t.Log(dockerfile)
+			node, err := imagebuilder.ParseDockerfile(strings.NewReader(dockerfile))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			stages := imagebuilder.NewStages(node, b)
+			if _, err := e.Stages(b, stages, ""); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestShell(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "dockerbuild-conformance-")
 	if err != nil {
