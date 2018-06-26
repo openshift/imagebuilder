@@ -455,10 +455,9 @@ func (e *ClientExecutor) PopulateTransientMounts(opts docker.CreateContainerOpti
 
 	var copies []imagebuilder.Copy
 	for i, mount := range transientMounts {
-		source := mount.SourcePath
 		copies = append(copies, imagebuilder.Copy{
 			FromFS: true,
-			Src:    []string{filepath.Join(e.Directory, source)},
+			Src:    []string{mount.SourcePath},
 			Dest:   filepath.Join(e.ContainerTransientMount, strconv.Itoa(i)),
 		})
 	}
