@@ -391,8 +391,8 @@ func TestTransientMount(t *testing.T) {
 	e.AllowPull = true
 	e.Directory = "testdata"
 	e.TransientMounts = []Mount{
-		{SourcePath: "dir", DestinationPath: "/mountdir"},
-		{SourcePath: "Dockerfile.env", DestinationPath: "/mountfile"},
+		{SourcePath: "testdata/dir", DestinationPath: "/mountdir"},
+		{SourcePath: "testdata/Dockerfile.env", DestinationPath: "/mountfile"},
 	}
 	e.Tag = fmt.Sprintf("conformance%d", rand.Int63())
 
