@@ -251,6 +251,14 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/dir",
 		},
 		{
+			Name:       "copy to dir",
+			ContextDir: "testdata/copy",
+		},
+		{
+			Name:       "copy to renamed file",
+			ContextDir: "testdata/copyrename",
+		},
+		{
 			Name:       "directory with slash",
 			ContextDir: "testdata/overlapdir",
 			Dockerfile: "Dockerfile.with_slash",
@@ -391,8 +399,8 @@ func TestTransientMount(t *testing.T) {
 	e.AllowPull = true
 	e.Directory = "testdata"
 	e.TransientMounts = []Mount{
-		{SourcePath: "dir", DestinationPath: "/mountdir"},
-		{SourcePath: "Dockerfile.env", DestinationPath: "/mountfile"},
+		{SourcePath: "testdata/dir", DestinationPath: "/mountdir"},
+		{SourcePath: "testdata/Dockerfile.env", DestinationPath: "/mountfile"},
 	}
 	e.Tag = fmt.Sprintf("conformance%d", rand.Int63())
 
