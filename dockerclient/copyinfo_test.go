@@ -17,6 +17,7 @@ func TestCalcCopyInfo(t *testing.T) {
 		paths          map[string]struct{}
 		excludes       []string
 		rebaseNames    map[string]string
+		check          map[string]bool
 	}{
 		{
 			origPath:       "subdir/*",
@@ -96,6 +97,33 @@ func TestCalcCopyInfo(t *testing.T) {
 		{
 			origPath:       ".",
 			dstPath:        "copy",
+			rootPath:       "testdata/singlefile",
+			allowWildcards: true,
+			errFn:          nilErr,
+			paths: map[string]struct{}{
+				"Dockerfile": {},
+			},
+			rebaseNames: map[string]string{
+				"Dockerfile": "copy/Dockerfile",
+			},
+		},
+		{
+			origPath:       "Dockerfile",
+			dstPath:        "copy",
+			rootPath:       "testdata/singlefile",
+			allowWildcards: true,
+			errFn:          nilErr,
+			paths: map[string]struct{}{
+				"Dockerfile": {},
+			},
+			rebaseNames: map[string]string{
+				"Dockerfile": "copy",
+			},
+		},
+		{
+			origPath:       "Dockerfile",
+			dstPath:        "copy",
+			check:          map[string]bool{"copy": true},
 			rootPath:       "testdata/singlefile",
 			allowWildcards: true,
 			errFn:          nilErr,
@@ -211,7 +239,10 @@ func TestCalcCopyInfo(t *testing.T) {
 				t.Errorf("did not see paths: %#v", expect)
 			}
 
-			options := archiveOptionsFor(infos, test.dstPath, test.excludes)
+			options, err := archiveOptionsFor(infos, test.dstPath, test.excludes, testDirectoryCheck(test.check))
+			if err != nil {
+				t.Fatal(err)
+			}
 			if !reflect.DeepEqual(test.rebaseNames, options.RebaseNames) {
 				t.Errorf("rebase names did not match:\n%#v\n%#v", test.rebaseNames, options.RebaseNames)
 			}

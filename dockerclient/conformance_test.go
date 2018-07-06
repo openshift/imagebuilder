@@ -251,6 +251,14 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/dir",
 		},
 		{
+			Name:       "copy to dir",
+			ContextDir: "testdata/copy",
+		},
+		{
+			Name:       "copy to renamed file",
+			ContextDir: "testdata/copyrename",
+		},
+		{
 			Name:       "directory with slash",
 			ContextDir: "testdata/overlapdir",
 			Dockerfile: "Dockerfile.with_slash",
