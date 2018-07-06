@@ -428,6 +428,13 @@ func Test_archiveFromContainer(t *testing.T) {
 				"/a",
 			},
 		},
+		{
+			gen:    newArchiveGenerator().Dir("./a").File("./a/b"),
+			src:    "a",
+			dst:    "/a",
+			path:   ".",
+			expect: []string{"/a/b"},
+		},
 	}
 	for i := range testCases {
 		testCase := testCases[i]
