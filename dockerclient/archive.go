@@ -248,9 +248,15 @@ func archivePathMapper(src, dst string, isDestDir bool) (fn func(name string, is
 	}
 	pattern := filepath.Base(srcPattern)
 
+	glog.V(6).Infof("creating mapper for srcPattern=%s pattern=%s dst=%s isDestDir=%t", srcPattern, pattern, dst, isDestDir)
+
 	// no wildcards
 	if !containsWildcards(pattern) {
 		return func(name string, isDir bool) (string, bool) {
+			// when extracting from the working directory, Docker prefaces with ./
+			if strings.HasPrefix(name, "."+string(filepath.Separator)) {
+				name = name[2:]
+			}
 			if name == srcPattern {
 				if isDir {
 					return "", false
@@ -438,12 +444,9 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string, check Di
 		case len(infos) > 1:
 			// put each input into the target, which is assumed to be a directory ([Dockerfile, dir] -> [a/Dockerfile, a/dir])
 			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))
-		case info.FileInfo.IsDir() && dstIsDir:
-			// mapping a directory to an explicit directory ([dir] -> [a])
-			options.RebaseNames[infoPath] = dst
 		case info.FileInfo.IsDir():
-			// mapping a directory to an implicit directory ([Dockerfile] -> [dir/Dockerfile])
-			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))
+			// mapping a directory to a destination, explicit or not ([dir] -> [a])
+			options.RebaseNames[infoPath] = dst
 		case info.FromDir:
 			// this is a file that was part of an explicit directory request, no transformation
 			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))

@@ -213,6 +213,20 @@ func TestCalcCopyInfo(t *testing.T) {
 				"subdir": "test",
 			},
 		},
+		{
+			origPath:       "dir",
+			dstPath:        "/dir",
+			check:          map[string]bool{"dir": false},
+			rootPath:       "testdata/copydir",
+			allowWildcards: true,
+			errFn:          nilErr,
+			paths: map[string]struct{}{
+				"dir": {},
+			},
+			rebaseNames: map[string]string{
+				"dir": "dir",
+			},
+		},
 	}
 
 	for i, test := range tests {
