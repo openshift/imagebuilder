@@ -13,8 +13,8 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"github.com/docker/docker/builder/dockerfile/command"
-	"github.com/docker/docker/builder/dockerfile/parser"
+	"github.com/moby/buildkit/frontend/dockerfile/command"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
 // Copy defines a copy operation required on the container.

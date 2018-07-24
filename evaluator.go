@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/docker/docker/builder/dockerfile/command"
-	"github.com/docker/docker/builder/dockerfile/parser"
+	"github.com/moby/buildkit/frontend/dockerfile/command"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
 // ParseDockerfile parses the provided stream as a canonical Dockerfile

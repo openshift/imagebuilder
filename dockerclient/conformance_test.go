@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/builder/dockerfile/command"
-	"github.com/docker/docker/builder/dockerfile/parser"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/moby/buildkit/frontend/dockerfile/command"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 
 	"github.com/openshift/imagebuilder"
 )

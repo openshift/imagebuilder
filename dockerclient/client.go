@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/builder/dockerfile/parser"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 
 	"github.com/openshift/imagebuilder"
 	"github.com/openshift/imagebuilder/imageprogress"
