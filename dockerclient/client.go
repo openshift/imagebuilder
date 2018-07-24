@@ -310,14 +310,15 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 				opts.Config.Cmd = e.Command
 				opts.Config.Entrypoint = nil
 			} else {
-				// TODO; replace me with a better default command
-				opts.Config.Cmd = []string{"sleep 86400"}
+				opts.Config.Cmd = []string{"read # built with imagebuilder"}
+				opts.Config.OpenStdin = true
 				opts.Config.Entrypoint = append([]string{}, defaultShell...)
 			}
 		}
 
 		if len(opts.Config.Cmd) == 0 {
-			opts.Config.Entrypoint = append(append([]string{}, defaultShell...), "# NOP")
+			opts.Config.OpenStdin = true
+			opts.Config.Entrypoint = append(append([]string{}, defaultShell...), "read # built with imagebuilder")
 		}
 
 		// copy any source content into the temporary mount path
@@ -382,7 +383,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 
 	if e.Container.State.Running {
 		glog.V(4).Infof("Stopping container %s ...", e.Container.ID)
-		if err := e.Client.StopContainer(e.Container.ID, 0); err != nil {
+		if err := killContainer(e.Client, e.Container.ID); err != nil {
 			return fmt.Errorf("unable to stop build container: %v", err)
 		}
 		e.Container.State.Running = false
@@ -1057,4 +1058,16 @@ func (t *ContainerVolumeTracker) Restore(containerID string, client *docker.Clie
 		}
 	}
 	return nil
+}
+
+func killContainer(client *docker.Client, id string) error {
+	err := client.KillContainer(docker.KillContainerOptions{ID: id})
+	if err == nil {
+		return nil
+	}
+	// container already stopped
+	if e, ok := err.(*docker.Error); ok && e.Status == 304 {
+		return nil
+	}
+	return err
 }
