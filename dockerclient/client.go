@@ -685,6 +685,7 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	exec, err := e.Client.CreateExec(docker.CreateExecOptions{
 		Cmd:          config.Cmd,
 		Container:    e.Container.ID,
+		Tty:          true,
 		AttachStdout: true,
 		AttachStderr: true,
 		User:         config.User,
