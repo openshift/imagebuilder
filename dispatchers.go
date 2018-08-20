@@ -438,6 +438,7 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, flagArgs
 		healthcheck := docker.HealthConfig{}
 
 		flags := flag.NewFlagSet("", flag.ContinueOnError)
+		flags.String("start-period", "", "")
 		flags.String("interval", "", "")
 		flags.String("timeout", "", "")
 		flRetries := flags.String("retries", "", "")
@@ -461,6 +462,12 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, flagArgs
 		default:
 			return fmt.Errorf("Unknown type %#v in HEALTHCHECK (try CMD)", typ)
 		}
+
+		period, err := parseOptInterval(flags.Lookup("start-period"))
+		if err != nil {
+			return err
+		}
+		healthcheck.StartPeriod = period
 
 		interval, err := parseOptInterval(flags.Lookup("interval"))
 		if err != nil {
