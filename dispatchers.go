@@ -187,6 +187,9 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 			return fmt.Errorf("Windows does not support FROM scratch")
 		}
 	}
+	if len(args) == 3 {
+		b.AsImageName = args[2]
+	}
 	b.RunConfig.Image = name
 	// TODO: handle onbuild
 	return nil
