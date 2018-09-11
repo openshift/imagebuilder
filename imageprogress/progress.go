@@ -144,6 +144,7 @@ func newWriter(reportFn func(report), layersChangedFn func(report, report) bool)
 type imageProgressWriter struct {
 	mutex                  *sync.Mutex
 	internalWriter         io.WriteCloser
+	readingGoroutineStatus <-chan error // Exists if internalWriter != nil
 	layerStatus            map[string]*progressLine
 	lastLayerCount         int
 	stableLines            int
@@ -160,8 +161,10 @@ func (w *imageProgressWriter) Write(data []byte) (int, error) {
 	defer w.mutex.Unlock()
 	if w.internalWriter == nil {
 		var pipeIn *io.PipeReader
+		statusChannel := make(chan error, 1) // Buffered, so that sending a value after this or our caller has failed and exited does not block.
 		pipeIn, w.internalWriter = io.Pipe()
-		go w.readingGoroutine(pipeIn)
+		w.readingGoroutineStatus = statusChannel
+		go w.readingGoroutine(statusChannel, pipeIn)
 	}
 	return w.internalWriter.Write(data)
 }
@@ -174,14 +177,27 @@ func (w *imageProgressWriter) Close() error {
 		return nil
 	}
 
-	return w.internalWriter.Close()
+	err := w.internalWriter.Close() // As of Go 1.9 and 1.10, PipeWriter.Close() always returns nil
+	readingErr := <-w.readingGoroutineStatus
+	if err == nil && readingErr != nil {
+		err = readingErr
+	}
+	return err
 }
 
-func (w *imageProgressWriter) readingGoroutine(pipeIn *io.PipeReader) {
-	err := w.readProgress(pipeIn)
-	if err != nil {
-		pipeIn.CloseWithError(err)
-	}
+func (w *imageProgressWriter) readingGoroutine(statusChannel chan<- error, pipeIn *io.PipeReader) {
+	err := errors.New("Internal error: unexpected panic in imageProgressWriter.readingGoroutine")
+	defer func() { statusChannel <- err }()
+	defer func() {
+		if err != nil {
+			pipeIn.CloseWithError(err)
+		} else {
+			pipeIn.Close()
+		}
+	}()
+
+	err = w.readProgress(pipeIn)
+	// err is nil on reaching EOF
 }
 
 func (w *imageProgressWriter) readProgress(pipeIn *io.PipeReader) error {
