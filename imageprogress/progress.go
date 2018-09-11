@@ -161,13 +161,7 @@ func (w *imageProgressWriter) Write(data []byte) (int, error) {
 	if w.internalWriter == nil {
 		var pipeIn *io.PipeReader
 		pipeIn, w.internalWriter = io.Pipe()
-		decoder := json.NewDecoder(pipeIn)
-		go func() {
-			err := w.readProgress(decoder)
-			if err != nil {
-				pipeIn.CloseWithError(err)
-			}
-		}()
+		go w.readingGoroutine(pipeIn)
 	}
 	return w.internalWriter.Write(data)
 }
@@ -183,7 +177,15 @@ func (w *imageProgressWriter) Close() error {
 	return w.internalWriter.Close()
 }
 
-func (w *imageProgressWriter) readProgress(decoder *json.Decoder) error {
+func (w *imageProgressWriter) readingGoroutine(pipeIn *io.PipeReader) {
+	err := w.readProgress(pipeIn)
+	if err != nil {
+		pipeIn.CloseWithError(err)
+	}
+}
+
+func (w *imageProgressWriter) readProgress(pipeIn *io.PipeReader) error {
+	decoder := json.NewDecoder(pipeIn)
 	for {
 		line := &progressLine{}
 		err := decoder.Decode(line)
