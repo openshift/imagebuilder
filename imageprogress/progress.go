@@ -3,6 +3,7 @@ package imageprogress
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -192,15 +193,23 @@ func (w *imageProgressWriter) readProgress(decoder *json.Decoder) error {
 		if err != nil {
 			return err
 		}
-		w.processLine(line)
+		err = w.processLine(line)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (w *imageProgressWriter) processLine(line *progressLine) {
+func (w *imageProgressWriter) processLine(line *progressLine) error {
+
+	if err := getError(line); err != nil {
+		return err
+	}
+
 	// determine if it's a line we want to process
 	if !islayerStatus(line) {
-		return
+		return nil
 	}
 
 	w.layerStatus[line.ID] = line
@@ -208,7 +217,7 @@ func (w *imageProgressWriter) processLine(line *progressLine) {
 	// if the number of layers has not stabilized yet, return and wait for more
 	// progress
 	if !w.isStableLayerCount() {
-		return
+		return nil
 	}
 
 	r := createReport(w.layerStatus)
@@ -218,7 +227,7 @@ func (w *imageProgressWriter) processLine(line *progressLine) {
 		w.lastReport = r
 		w.lastReportTime = time.Now()
 		w.reportFn(r)
-		return
+		return nil
 	}
 	// If layer counts haven't changed, but enough time has passed (30 sec by default),
 	// at least report on download/push progress
@@ -227,6 +236,7 @@ func (w *imageProgressWriter) processLine(line *progressLine) {
 		w.lastReportTime = time.Now()
 		w.reportFn(r)
 	}
+	return nil
 }
 
 func (w *imageProgressWriter) isStableLayerCount() bool {
@@ -263,6 +273,13 @@ func islayerStatus(line *progressLine) bool {
 		return false
 	}
 	return true
+}
+
+func getError(line *progressLine) error {
+	if len(line.Error) > 0 {
+		return errors.New(line.Error)
+	}
+	return nil
 }
 
 func createReport(dockerProgress map[string]*progressLine) report {
