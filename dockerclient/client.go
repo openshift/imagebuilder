@@ -581,7 +581,12 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 		var pullErr error
 		func() { // A scope for defer
 			pullWriter := imageprogress.NewPullWriter(outputProgress)
-			defer pullWriter.Close()
+			defer func() {
+				err := pullWriter.Close()
+				if pullErr == nil {
+					pullErr = err
+				}
+			}()
 
 			pullImageOptions := docker.PullImageOptions{
 				Repository:    repository,
