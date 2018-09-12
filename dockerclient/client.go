@@ -592,10 +592,11 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 			pullImageOptions.RawJSONStream = false
 		}
 		authConfig := docker.AuthConfiguration{Username: config.Username, ServerAddress: config.ServerAddress, Password: config.Password}
-		if err = e.Client.PullImage(pullImageOptions, authConfig); err == nil {
+		pullErr := e.Client.PullImage(pullImageOptions, authConfig)
+		if pullErr == nil {
 			break
 		}
-		lastErr = err
+		lastErr = pullErr
 		continue
 	}
 	if lastErr != nil {
