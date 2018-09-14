@@ -224,6 +224,8 @@ type Builder struct {
 	PendingCopies  []Copy
 
 	Warnings []string
+
+	AsImageName string
 }
 
 func NewBuilder(args map[string]string) *Builder {
