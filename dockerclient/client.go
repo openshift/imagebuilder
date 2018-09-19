@@ -129,12 +129,9 @@ func NewClientExecutor(client *docker.Client) *ClientExecutor {
 }
 
 func (e *ClientExecutor) DefaultExcludes() error {
-	excludes, err := imagebuilder.ParseDockerignore(e.Directory)
-	if err != nil {
-		return err
-	}
-	e.Excludes = append(excludes, ".dockerignore")
-	return nil
+	var err error
+	e.Excludes, err = imagebuilder.ParseDockerignore(e.Directory)
+	return err
 }
 
 // WithName creates a new child executor that will be used whenever a COPY statement
