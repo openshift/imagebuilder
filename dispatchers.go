@@ -181,6 +181,19 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 	}
 
 	name := args[0]
+
+	// Support ARG before FROM.
+	// Only args parsed before FROM will be in b.Args at this point,
+	// so expand all matching variables in name.
+	argStrs := make([]string, 0)
+	for argName, argVal := range b.Args {
+		argStrs = append(argStrs, strings.Join([]string{argName, argVal}, "="))
+	}
+	var err error
+	if name, err = ProcessWord(name, argStrs); err != nil {
+		return err
+	}
+
 	// Windows cannot support a container with no base image.
 	if name == NoBaseImageSpecifier {
 		if runtime.GOOS == "windows" {
