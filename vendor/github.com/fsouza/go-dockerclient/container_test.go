@@ -7,6 +7,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,8 +22,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 )
 
 func TestStateString(t *testing.T) {
@@ -1332,6 +1331,18 @@ func TestKillContainerNotFound(t *testing.T) {
 	}
 }
 
+func TestKillContainerNotRunning(t *testing.T) {
+	t.Parallel()
+	id := "abcd1234567890"
+	msg := fmt.Sprintf("Cannot kill container: %[1]s: Container %[1]s is not running", id)
+	client := newTestClient(&FakeRoundTripper{message: msg, status: http.StatusConflict})
+	err := client.KillContainer(KillContainerOptions{ID: id})
+	expected := &ContainerNotRunning{ID: id}
+	if !reflect.DeepEqual(err, expected) {
+		t.Errorf("KillContainer: Wrong error returned. Want %#v. Got %#v.", expected, err)
+	}
+}
+
 func TestRemoveContainer(t *testing.T) {
 	t.Parallel()
 	fakeRT := &FakeRoundTripper{message: "", status: http.StatusOK}
@@ -2464,7 +2475,8 @@ func TestStats(t *testing.T) {
              "total_usage" : 36488948,
              "usage_in_kernelmode" : 20000000
           },
-          "system_cpu_usage" : 20091722000000000
+          "system_cpu_usage" : 20091722000000000,
+		  "online_cpus": 4
        },
        "precpu_stats" : {
           "cpu_usage" : {
@@ -2478,7 +2490,8 @@ func TestStats(t *testing.T) {
              "total_usage" : 36488948,
              "usage_in_kernelmode" : 20000000
           },
-          "system_cpu_usage" : 20091722000000000
+          "system_cpu_usage" : 20091722000000000,
+		  "online_cpus": 4
        }
     }`
 	// 1 second later, cache is 100
@@ -2582,7 +2595,8 @@ func TestStats(t *testing.T) {
              "total_usage" : 36488948,
              "usage_in_kernelmode" : 20000000
           },
-          "system_cpu_usage" : 20091722000000000
+          "system_cpu_usage" : 20091722000000000,
+		  "online_cpus": 4
        },
        "precpu_stats" : {
           "cpu_usage" : {
@@ -2596,7 +2610,8 @@ func TestStats(t *testing.T) {
              "total_usage" : 36488948,
              "usage_in_kernelmode" : 20000000
           },
-          "system_cpu_usage" : 20091722000000000
+          "system_cpu_usage" : 20091722000000000,
+		  "online_cpus": 4
        }
     }`
 	var expected1 Stats
@@ -2739,11 +2754,11 @@ func TestStartContainerWhenContextTimesOut(t *testing.T) {
 
 func TestStopContainerWhenContextTimesOut(t *testing.T) {
 	t.Parallel()
-	rt := sleepyRoudTripper{sleepDuration: 200 * time.Millisecond}
+	rt := sleepyRoudTripper{sleepDuration: 300 * time.Millisecond}
 
 	client := newTestClient(&rt)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.TODO(), 50*time.Millisecond)
 	defer cancel()
 
 	err := client.StopContainerWithContext("id", 10, ctx)
