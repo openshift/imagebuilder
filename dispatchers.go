@@ -27,11 +27,6 @@ var (
 	obRgex = regexp.MustCompile(`(?i)^\s*ONBUILD\s*`)
 )
 
-// dispatch with no layer / parsing. This is effectively not a command.
-func nullDispatch(b *Builder, args []string, attributes map[string]bool, flagArgs []string, original string) error {
-	return nil
-}
-
 // ENV foo bar
 //
 // Sets the environment variable foo to bar, also makes interpolation
