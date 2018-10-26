@@ -1,6 +1,8 @@
 reviewers:
-- nalind
 - bparees
-- rhatdan
 approvers:
+- TomSweeneyRedHat
+- mrunalp
+- nalind
+- rhatdan
 - smarterclayton
