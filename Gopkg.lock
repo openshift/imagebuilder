@@ -2,100 +2,188 @@
 
 
 [[projects]]
+  digest = "1:4485ca12c0ab1317ddebfad6562c9dc0bd70b0453171b3e14f684553c1502490"
   name = "github.com/Azure/go-ansiterm"
-  packages = [".","winterm"]
+  packages = [
+    ".",
+    "winterm",
+  ]
+  pruneopts = "NUT"
   revision = "19f72df4d05d31cbe1c56bfc8045c96babff6c7e"
 
 [[projects]]
+  digest = "1:2941ec6eccc1bc46b6cff9eb416fc623524f554e474367d378bd0ed8301652db"
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "78439966b38d69bf38227fbf57ac8a6fee70f69a"
   version = "v0.4.5"
 
 [[projects]]
   branch = "master"
+  digest = "1:7da1a26e347165227c79dfb10b90b3b5dedb6cbae50e88cdb81f5b6259b5b951"
   name = "github.com/Nvveen/Gotty"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
 
 [[projects]]
+  digest = "1:3638567e0aba6291379182ba1320fd34eb7ddea343a6d71a7abfe31797866bee"
   name = "github.com/docker/docker"
-  packages = ["api/types","api/types/blkiodev","api/types/container","api/types/filters","api/types/mount","api/types/network","api/types/registry","api/types/strslice","api/types/swarm","api/types/swarm/runtime","api/types/versions","builder/dockerfile/command","builder/dockerfile/parser","opts","pkg/archive","pkg/fileutils","pkg/homedir","pkg/idtools","pkg/ioutils","pkg/jsonlog","pkg/jsonmessage","pkg/longpath","pkg/mount","pkg/pools","pkg/promise","pkg/stdcopy","pkg/system","pkg/term","pkg/term/windows"]
+  packages = [
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/filters",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/swarm/runtime",
+    "api/types/versions",
+    "builder/dockerfile/command",
+    "builder/dockerfile/parser",
+    "opts",
+    "pkg/archive",
+    "pkg/fileutils",
+    "pkg/homedir",
+    "pkg/idtools",
+    "pkg/ioutils",
+    "pkg/longpath",
+    "pkg/mount",
+    "pkg/pools",
+    "pkg/promise",
+    "pkg/stdcopy",
+    "pkg/system",
+  ]
+  pruneopts = "NUT"
   revision = "b68221c37ee597950364788204546f9c9d0e46a1"
 
 [[projects]]
+  digest = "1:87dcb59127512b84097086504c16595cf8fef35b9e0bfca565dfc06e198158d7"
   name = "github.com/docker/go-connections"
   packages = ["nat"]
+  pruneopts = "NUT"
   revision = "3ede32e2033de7505e6500d6c868c2b9ed9f169d"
   version = "v0.3.0"
 
 [[projects]]
+  digest = "1:4340101f42556a9cb2f7a360a0e95a019bfef6247d92e6c4c46f2433cf86a482"
   name = "github.com/docker/go-units"
   packages = ["."]
-  revision = "e30f1e79f3cd72542f2026ceec18d3bd67ab859c"
+  pruneopts = "NUT"
+  revision = "47565b4f722fb6ceae66b95f853feed578a4a51c"
+  version = "v0.3.3"
 
 [[projects]]
-  branch = "openshift-3.9"
+  branch = "openshift-4.0"
+  digest = "1:c4ca151231ad8366e47d67048bfafd91ea77aeb9ab3a237aa2f68b5d267027dc"
   name = "github.com/fsouza/go-dockerclient"
-  packages = ["."]
-  revision = "7511300f03c521cfc8e07e88ea8c915add790f50"
+  packages = [
+    ".",
+    "internal/archive",
+    "internal/jsonmessage",
+    "internal/term",
+  ]
+  pruneopts = "NUT"
+  revision = "ff9568be22191ade194515ed895fad125f89085e"
   source = "https://github.com/openshift/go-dockerclient.git"
 
 [[projects]]
+  digest = "1:1e6e4ba33ea485832b3d364a2badcc001993047e997d57d46c9f1059e4ada0e7"
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
+  pruneopts = "NUT"
   revision = "fcdc5011193ff531a548e9b0301828d5a5b97fd8"
 
 [[projects]]
   branch = "master"
+  digest = "1:e2b86e41f3d669fc36b50d31d32d22c8ac656c75aa5ea89717ce7177e134ff2a"
   name = "github.com/golang/glog"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
+  digest = "1:e0cc8395ea893c898ff5eb0850f4d9851c1f57c78c232304a026379a47a552d0"
   name = "github.com/opencontainers/go-digest"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
   version = "v1.0.0-rc1"
 
 [[projects]]
+  digest = "1:72355c470c6667f840653face568d24896ce8ff9888b0304b18e5e7452147206"
   name = "github.com/opencontainers/image-spec"
-  packages = ["specs-go","specs-go/v1"]
+  packages = [
+    "specs-go",
+    "specs-go/v1",
+  ]
+  pruneopts = "NUT"
   revision = "97ae57f204b5956aa313d453ead9094ff9056b32"
 
 [[projects]]
+  digest = "1:c1b423f7c38055168a45046fd3542a0fef73f27b5a3b29ff8b9ceb5e70416f6f"
   name = "github.com/opencontainers/runc"
-  packages = ["libcontainer/system","libcontainer/user"]
+  packages = [
+    "libcontainer/system",
+    "libcontainer/user",
+  ]
+  pruneopts = "NUT"
   revision = "ae2948042b08ad3d6d13cd09f40a50ffff4fc688"
 
 [[projects]]
+  digest = "1:074bc35ec6969d7603de3cffb5bb9dc3b6fb694745a9837942fa9b1670e511e6"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "c605e284fe17294bda444b34710735b29d1a9d90"
 
 [[projects]]
+  digest = "1:414933e1ae2e9e19123e52fb29c97cb9d127d8a500f45a2ba80b537283a38b87"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "89742aefa4b206dcf400792f3bd35b542998eb3b"
 
 [[projects]]
+  digest = "1:624a05c7c6ed502bf77364cd3d54631383dafc169982fddd8ee77b53c3d9cccf"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
+  pruneopts = "NUT"
   revision = "eb71ad9bd329b5ac0fd0148dd99bd62e8be8e035"
 
 [[projects]]
+  branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
   name = "golang.org/x/net"
-  packages = ["context","context/ctxhttp"]
-  revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
+  packages = ["context"]
+  pruneopts = "NUT"
+  revision = "9b4f9f5ad5197c79fd623a3638e70d8b26cef344"
 
 [[projects]]
+  digest = "1:a0f7f14fd66648464736a52c09159089e41cece91a71b7902e2f8feb8afa4f28"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows",
+  ]
+  pruneopts = "NUT"
   revision = "07c182904dbd53199946ba614a412c61d3c548f5"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c0a34f9ea7c3acc27bcc548c234156d1d24152e5b363e97ff885ba9d5d9c256c"
+  input-imports = [
+    "github.com/docker/docker/api/types",
+    "github.com/docker/docker/builder/dockerfile/command",
+    "github.com/docker/docker/builder/dockerfile/parser",
+    "github.com/docker/docker/pkg/archive",
+    "github.com/docker/docker/pkg/fileutils",
+    "github.com/docker/docker/pkg/idtools",
+    "github.com/fsouza/go-dockerclient",
+    "github.com/golang/glog",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
