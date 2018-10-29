@@ -176,6 +176,17 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 	}
 
 	name := args[0]
+
+	// Support ARG before from
+	argStrs := []string{}
+	for n, v := range b.Args {
+		argStrs = append(argStrs, n+"="+v)
+	}
+	var err error
+	if name, err = ProcessWord(name, argStrs); err != nil {
+		return err
+	}
+
 	// Windows cannot support a container with no base image.
 	if name == NoBaseImageSpecifier {
 		if runtime.GOOS == "windows" {
