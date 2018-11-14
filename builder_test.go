@@ -222,7 +222,7 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.env",
 			From:       "busybox",
 			Config: docker.Config{
-				Env:   []string{"name=value", "name2=value2a            value2b", "name1=value1", "name3=value3a\\n\"value3b\"", "name4=value4a\\\\nvalue4b"},
+				Env:   []string{"name=value", "name2=\"value2a            value2b\"", "name1=value1", "name3=\"value3a\\n\"value3b\"\"", "name4=\"value4a\\\\nvalue4b\""},
 				Image: "busybox",
 			},
 		},
@@ -245,7 +245,7 @@ func TestBuilder(t *testing.T) {
 			Config: docker.Config{
 				User:         "docker:root",
 				ExposedPorts: map[docker.Port]struct{}{"6000/tcp": {}, "3000/tcp": {}, "9000/tcp": {}, "5000/tcp": {}},
-				Env:          []string{"SCUBA=1 DUBA 3"},
+				Env:          []string{"SCUBA=\"1 DUBA 3\""},
 				Cmd:          []string{"/bin/sh", "-c", "echo 'test' | wc -"},
 				Image:        "busybox",
 				Volumes:      map[string]struct{}{"/test2": {}, "/test3": {}, "/test": {}},
@@ -327,8 +327,8 @@ func TestBuilder(t *testing.T) {
 				},
 			},
 			Config: docker.Config{
-				Env:    []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "FOO=value"},
-				Labels: map[string]string{"test": "value"},
+				Env:    []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "FOO=\"value\""},
+				Labels: map[string]string{"test": "\"\"value\"\""},
 			},
 		},
 		{
@@ -337,8 +337,8 @@ func TestBuilder(t *testing.T) {
 			From:       "busybox",
 			Config: docker.Config{
 				Image:  "busybox",
-				Env:    []string{"FOO=value", "TEST=", "BAZ=first"},
-				Labels: map[string]string{"test": "value"},
+				Env:    []string{"FOO=\"value\"", "TEST=", "BAZ=first"},
+				Labels: map[string]string{"test": "\"\"value\"\""},
 			},
 			Runs: []Run{
 				{Shell: true, Args: []string{"echo $BAR"}},
@@ -473,8 +473,9 @@ func TestBuilder(t *testing.T) {
 			}
 			lastConfig := b.RunConfig
 			if !reflect.DeepEqual(test.Config, lastConfig) {
-				data, _ := json.Marshal(lastConfig)
-				t.Errorf("%d: unexpected config: %s", i, string(data))
+				lastData, _ := json.Marshal(lastConfig)
+				testData, _ := json.Marshal(test.Config)
+				t.Errorf("%d: unexpected config:\n%s\n%s", i, string(lastData), string(testData))
 			}
 		})
 	}

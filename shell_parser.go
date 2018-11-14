@@ -174,7 +174,7 @@ func (sw *shellWord) processSingleQuote() (string, error) {
 		result += string(ch)
 	}
 
-	return result, nil
+	return fmt.Sprintf("'%s'", result), nil
 }
 
 func (sw *shellWord) processDoubleQuote() (string, error) {
@@ -215,7 +215,7 @@ func (sw *shellWord) processDoubleQuote() (string, error) {
 		}
 	}
 
-	return result, nil
+	return fmt.Sprintf("\"%s\"", result), nil
 }
 
 func (sw *shellWord) processDollar() (string, error) {
