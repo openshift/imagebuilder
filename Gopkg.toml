@@ -22,10 +22,21 @@
 
 
 [[constraint]]
-  branch = "openshift-3.9"
+  branch = "openshift-4.0"
   name = "github.com/fsouza/go-dockerclient"
   source = "https://github.com/openshift/go-dockerclient.git"
 
 [[constraint]]
   branch = "master"
   name = "github.com/golang/glog"
+
+# override here to force `docker/docker` to that commit
+# and not the commit present in `go-dockerclient`
+[[override]]
+  name = "github.com/docker/docker"
+  revision = "b68221c37ee597950364788204546f9c9d0e46a1"
+
+[prune]
+  non-go = true
+  unused-packages = true
+  go-tests = true 
