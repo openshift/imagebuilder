@@ -624,6 +624,16 @@ func (e *ClientExecutor) Preserve(path string) error {
 	if e.Volumes == nil {
 		e.Volumes = NewContainerVolumeTracker()
 	}
+
+	if err := e.EnsureContainerPath(path); err != nil {
+		return err
+	}
+
+	e.Volumes.Add(path)
+	return nil
+}
+
+func (e *ClientExecutor) EnsureContainerPath(path string) error {
 	createPath := func(dest string) error {
 		var writerErr error
 		if !strings.HasSuffix(dest, "/") {
@@ -667,11 +677,9 @@ func (e *ClientExecutor) Preserve(path string) error {
 	}
 	if err := readPath(path); err != nil {
 		if err = createPath(path); err != nil {
-			return fmt.Errorf("error creating volume directory %s: %v", path, err)
+			return fmt.Errorf("error creating container directory %s: %v", path, err)
 		}
 	}
-
-	e.Volumes.Add(path)
 	return nil
 }
 
