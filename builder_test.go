@@ -170,6 +170,10 @@ func (e *testExecutor) Preserve(path string) error {
 	return e.Err
 }
 
+func (e *testExecutor) EnsureContainerPath(path string) error {
+	return e.Err
+}
+
 func (e *testExecutor) Copy(excludes []string, copies ...Copy) error {
 	e.Copies = append(e.Copies, copies...)
 	return e.Err
