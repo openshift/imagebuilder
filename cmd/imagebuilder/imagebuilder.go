@@ -24,8 +24,10 @@ func main() {
 	var dockerfilePath string
 	var imageFrom string
 	var privileged bool
+	var version bool
 	var mountSpecs stringSliceFlag
 
+	VERSION := "1.1-dev"
 	arguments := stringMapFlag{}
 
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
@@ -40,10 +42,16 @@ func main() {
 	flag.BoolVar(&options.IgnoreUnrecognizedInstructions, "ignore-unrecognized-instructions", true, "If an unrecognized Docker instruction is encountered, warn but do not fail the build.")
 	flag.BoolVar(&options.StrictVolumeOwnership, "strict-volume-ownership", false, "Due to limitations in docker `cp`, owner permissions on volumes are lost. This flag will fail builds that might fall victim to this.")
 	flag.BoolVar(&privileged, "privileged", false, "Builds run as privileged containers instead of restricted containers.")
+	flag.BoolVar(&version, "version", false, "Display imagebuilder version.")
 
 	flag.Parse()
 
 	args := flag.Args()
+	if version {
+		fmt.Println(VERSION)
+		return
+	}
+
 	if len(args) != 1 {
 		log.Fatalf("You must provide one argument, the name of a directory to build")
 	}
