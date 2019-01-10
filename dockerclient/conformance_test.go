@@ -349,6 +349,10 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "noworkdir",
 			Dockerfile: "testdata/Dockerfile.noworkdir",
 		},
+		{
+			Name:       "volumeexists",
+			Dockerfile: "testdata/Dockerfile.volumeexists",
+		},
 	}
 
 	for i, test := range testCases {
