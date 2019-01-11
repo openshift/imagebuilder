@@ -3,6 +3,7 @@ package dockerclient
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -623,7 +624,62 @@ func (e *ClientExecutor) Preserve(path string) error {
 	if e.Volumes == nil {
 		e.Volumes = NewContainerVolumeTracker()
 	}
+
+	if err := e.EnsureContainerPath(path); err != nil {
+		return err
+	}
+
 	e.Volumes.Add(path)
+	return nil
+}
+
+func (e *ClientExecutor) EnsureContainerPath(path string) error {
+	createPath := func(dest string) error {
+		var writerErr error
+		if !strings.HasSuffix(dest, "/") {
+			dest = dest + "/"
+		}
+		reader, writer := io.Pipe()
+		opts := docker.UploadToContainerOptions{
+			InputStream: reader,
+			Path:        "/",
+			Context:     context.TODO(),
+		}
+		go func() {
+			defer writer.Close()
+			tarball := tar.NewWriter(writer)
+			defer tarball.Close()
+			writerErr = tarball.WriteHeader(&tar.Header{
+				Name:     dest,
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			})
+		}()
+		glog.V(4).Infof("Uploading empty archive to %q", dest)
+		err := e.Client.UploadToContainer(e.Container.ID, opts)
+		if err != nil {
+			return fmt.Errorf("unable to ensure existence of preserved path %s: %v", dest, err)
+		}
+		if writerErr != nil {
+			return fmt.Errorf("error generating tarball to ensure existence of preserved path %s: %v", dest, writerErr)
+		}
+		return nil
+	}
+	readPath := func(dest string) error {
+		if !strings.HasSuffix(dest, "/") {
+			dest = dest + "/"
+		}
+		err := e.Client.DownloadFromContainer(e.Container.ID, docker.DownloadFromContainerOptions{
+			Path:         dest,
+			OutputStream: ioutil.Discard,
+		})
+		return err
+	}
+	if err := readPath(path); err != nil {
+		if err = createPath(path); err != nil {
+			return fmt.Errorf("error creating container directory %s: %v", path, err)
+		}
+	}
 	return nil
 }
 
@@ -1051,7 +1107,17 @@ func (t *ContainerVolumeTracker) Restore(containerID string, client *docker.Clie
 		if err := client.StartExec(exec.ID, docker.StartExecOptions{}); err != nil {
 			return fmt.Errorf("unable to clear preserved path %s: %v", dest, err)
 		}
-		status, err := client.InspectExec(exec.ID)
+		var status *docker.ExecInspect
+		for status == nil {
+			status, err = client.InspectExec(exec.ID)
+			if err != nil {
+				break
+			}
+			if !status.Running {
+				break
+			}
+			status = nil
+		}
 		if err != nil {
 			return fmt.Errorf("clearing preserved path %s did not succeed: %v", dest, err)
 		}
