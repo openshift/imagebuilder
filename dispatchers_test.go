@@ -91,3 +91,60 @@ func TestDispatchCopyChown(t *testing.T) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
 	}
 }
+
+func TestDispatchAddChown(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	mybuilder2 := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+
+	// Test Bad chown values
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=1376:1376"}
+	original := "ADD --chown=1376:1376 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
+	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: false,
+			Chown:    "6731:6731",
+		},
+	}
+	if reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to not match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+
+	// Test Good chown values
+	flagArgs = []string{"--chown=6731:6731"}
+	original = "ADD --chown=6731:6731 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
+	if err := add(&mybuilder2, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingCopies = []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: true,
+			Chown:    "6731:6731",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
+	}
+}
