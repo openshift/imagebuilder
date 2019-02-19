@@ -163,14 +163,15 @@
   revision = "9b4f9f5ad5197c79fd623a3638e70d8b26cef344"
 
 [[projects]]
-  digest = "1:a0f7f14fd66648464736a52c09159089e41cece91a71b7902e2f8feb8afa4f28"
+  branch = "master"
+  digest = "1:cfe2c7e303e82ed7baf651eaf60b824aaefdb0cce2ed70801447065fa6ac18cb"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "07c182904dbd53199946ba614a412c61d3c548f5"
+  revision = "90b0e4468f9980bf79a2290394adaf7f045c5d24"
 
 [solve-meta]
   analyzer-name = "dep"
