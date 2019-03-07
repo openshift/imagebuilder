@@ -7,8 +7,8 @@ go:
 install:
 
 script:
-  - go build ./...
-  - go test ./...
+  - make build
+  - make test
 
 notifications:
   irc: "chat.freenode.net#openshift-dev"
