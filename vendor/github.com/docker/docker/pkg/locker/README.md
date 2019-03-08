@@ -35,7 +35,7 @@ type important struct {
 func (i *important) Get(name string) interface{} {
 	i.locks.Lock(name)
 	defer i.locks.Unlock(name)
-	return i.data[name]
+	return data[name]
 }
 
 func (i *important) Create(name string, data interface{}) {
@@ -44,9 +44,9 @@ func (i *important) Create(name string, data interface{}) {
 
 	i.createImportant(data)
 
-	i.mu.Lock()
+	s.mu.Lock()
 	i.data[name] = data
-	i.mu.Unlock()
+	s.mu.Unlock()
 }
 
 func (i *important) createImportant(data interface{}) {

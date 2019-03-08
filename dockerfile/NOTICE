@@ -2,6 +2,9 @@ Source files in this directory and all sub-directories have been
 copied from github.com/docker/docker/builder/dockerfile and are
 Licensed under the Apache License Version 2.0.
 
+Note that the fork of github.com/docker/docker used commit
+b68221c37ee597950364788204546f9c9d0e46a1.
+
 Docker
 Copyright 2012-2017 Docker, Inc.
 

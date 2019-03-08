@@ -3,22 +3,23 @@ package jsonlog
 import (
 	"bytes"
 	"encoding/json"
-	"time"
 	"unicode/utf8"
 )
 
-// JSONLogs marshals encoded JSONLog objects
+// JSONLogs is based on JSONLog.
+// It allows marshalling JSONLog from Log as []byte
+// and an already marshalled Created timestamp.
 type JSONLogs struct {
-	Log     []byte    `json:"log,omitempty"`
-	Stream  string    `json:"stream,omitempty"`
-	Created time.Time `json:"time"`
+	Log     []byte `json:"log,omitempty"`
+	Stream  string `json:"stream,omitempty"`
+	Created string `json:"time"`
 
 	// json-encoded bytes
 	RawAttrs json.RawMessage `json:"attrs,omitempty"`
 }
 
-// MarshalJSONBuf is an optimized JSON marshaller that avoids reflection
-// and unnecessary allocation.
+// MarshalJSONBuf is based on the same method from JSONLog
+// It has been modified to take into account the necessary changes.
 func (mj *JSONLogs) MarshalJSONBuf(buf *bytes.Buffer) error {
 	var first = true
 
@@ -35,7 +36,7 @@ func (mj *JSONLogs) MarshalJSONBuf(buf *bytes.Buffer) error {
 			buf.WriteString(`,`)
 		}
 		buf.WriteString(`"stream":`)
-		ffjsonWriteJSONBytesAsString(buf, []byte(mj.Stream))
+		ffjsonWriteJSONString(buf, mj.Stream)
 	}
 	if len(mj.RawAttrs) > 0 {
 		if first {
@@ -49,18 +50,14 @@ func (mj *JSONLogs) MarshalJSONBuf(buf *bytes.Buffer) error {
 	if !first {
 		buf.WriteString(`,`)
 	}
-
-	created, err := fastTimeMarshalJSON(mj.Created)
-	if err != nil {
-		return err
-	}
-
 	buf.WriteString(`"time":`)
-	buf.WriteString(created)
+	buf.WriteString(mj.Created)
 	buf.WriteString(`}`)
 	return nil
 }
 
+// This is based on ffjsonWriteJSONBytesAsString. It has been changed
+// to accept a string passed as a slice of bytes.
 func ffjsonWriteJSONBytesAsString(buf *bytes.Buffer, s []byte) {
 	const hex = "0123456789abcdef"
 

@@ -296,7 +296,10 @@ func (clnt *client) UpdateResources(containerID string, resources Resources) err
 		Pid:       InitFriendlyName,
 		Resources: (*containerd.UpdateResource)(&resources),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (clnt *client) getExitNotifier(containerID string) *exitNotifier {

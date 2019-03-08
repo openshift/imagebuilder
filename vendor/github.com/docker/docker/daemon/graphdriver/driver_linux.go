@@ -67,7 +67,6 @@ var (
 		FsMagicAufs:        "aufs",
 		FsMagicBtrfs:       "btrfs",
 		FsMagicCramfs:      "cramfs",
-		FsMagicEcryptfs:    "ecryptfs",
 		FsMagicExtfs:       "extfs",
 		FsMagicF2fs:        "f2fs",
 		FsMagicGPFS:        "gpfs",
