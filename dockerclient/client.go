@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/builder/dockerfile/parser"
+	"github.com/openshift/imagebuilder/dockerfile/parser"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
 
