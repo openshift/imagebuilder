@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/fileutils"
-	"github.com/docker/docker/pkg/idtools"
+	"github.com/containers/storage/pkg/archive"
+	"github.com/containers/storage/pkg/fileutils"
+	"github.com/containers/storage/pkg/idtools"
 	"github.com/golang/glog"
 )
 
