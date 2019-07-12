@@ -10,11 +10,15 @@ import (
 
 	dockertypes "github.com/docker/docker/api/types"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/openshift/imagebuilder"
 	"github.com/openshift/imagebuilder/dockerclient"
 )
+
+func init() {
+	klog.InitFlags(flag.CommandLine)
+}
 
 func main() {
 	log.SetFlags(0)
@@ -87,7 +91,7 @@ func main() {
 		return nil, false
 	}
 	options.LogFn = func(format string, args ...interface{}) {
-		if glog.V(2) {
+		if klog.V(2) {
 			log.Printf("Builder: "+format, args...)
 		} else {
 			fmt.Fprintf(options.Out, "--> %s\n", fmt.Sprintf(format, args...))

@@ -6,9 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/golang/glog"
-
 	docker "github.com/fsouza/go-dockerclient"
+	"k8s.io/klog"
 )
 
 type DirectoryCheck interface {
@@ -52,11 +51,11 @@ func isContainerPathDirectory(client *docker.Client, containerID, path string) (
 		})
 		if err != nil {
 			if apiErr, ok := err.(*docker.Error); ok && apiErr.Status == 404 {
-				glog.V(4).Infof("path %s did not exist in container %s: %v", path, containerID, err)
+				klog.V(4).Infof("path %s did not exist in container %s: %v", path, containerID, err)
 				err = nil
 			}
 			if err != nil && err != context.Canceled {
-				glog.V(6).Infof("error while checking directory contents for container %s at path %s: %v", containerID, path, err)
+				klog.V(6).Infof("error while checking directory contents for container %s at path %s: %v", containerID, path, err)
 			}
 		}
 		pw.CloseWithError(err)
@@ -73,14 +72,14 @@ func isContainerPathDirectory(client *docker.Client, containerID, path string) (
 		return false, err
 	}
 
-	glog.V(4).Infof("Retrieved first header from container %s at path %s: %#v", containerID, path, h)
+	klog.V(4).Infof("Retrieved first header from container %s at path %s: %#v", containerID, path, h)
 
 	// take the remainder of the input and discard it
 	go func() {
 		cancel()
 		n, err := io.Copy(ioutil.Discard, pr)
 		if n > 0 || err != nil {
-			glog.V(6).Infof("Discarded %d bytes from end of container directory check, and got error: %v", n, err)
+			klog.V(6).Infof("Discarded %d bytes from end of container directory check, and got error: %v", n, err)
 		}
 	}()
 
