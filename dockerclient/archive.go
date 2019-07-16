@@ -16,7 +16,7 @@ import (
 	"github.com/containers/storage/pkg/archive"
 	"github.com/containers/storage/pkg/fileutils"
 	"github.com/containers/storage/pkg/idtools"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // TransformFileFunc is given a chance to transform an arbitrary input file.
@@ -40,7 +40,7 @@ func FilterArchive(r io.Reader, w io.Writer, fn TransformFileFunc) error {
 		var body io.Reader = tr
 		name := h.Name
 		data, ok, skip, err := fn(h, tr)
-		glog.V(6).Infof("Transform %s -> %s: data=%t ok=%t skip=%t err=%v", name, h.Name, data != nil, ok, skip, err)
+		klog.V(6).Infof("Transform %s -> %s: data=%t ok=%t skip=%t err=%v", name, h.Name, data != nil, ok, skip, err)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func archiveFromDisk(directory string, src, dst string, allowDownload bool, excl
 
 	// special case when we are archiving a single file at the root
 	if len(infos) == 1 && !infos[0].FileInfo.IsDir() && (infos[0].Path == "." || infos[0].Path == "/") {
-		glog.V(5).Infof("Archiving a file instead of a directory from %s", directory)
+		klog.V(5).Infof("Archiving a file instead of a directory from %s", directory)
 		infos[0].Path = filepath.Base(directory)
 		infos[0].FromDir = false
 		directory = filepath.Dir(directory)
@@ -180,7 +180,7 @@ func archiveFromDisk(directory string, src, dst string, allowDownload bool, excl
 		return nil, nil, err
 	}
 
-	glog.V(4).Infof("Tar of %s %#v", directory, options)
+	klog.V(4).Infof("Tar of %s %#v", directory, options)
 	rc, err := archive.TarWithOptions(directory, options)
 	return rc, rc, err
 }
@@ -248,7 +248,7 @@ func archivePathMapper(src, dst string, isDestDir bool) (fn func(name string, is
 	}
 	pattern := filepath.Base(srcPattern)
 
-	glog.V(6).Infof("creating mapper for srcPattern=%s pattern=%s dst=%s isDestDir=%t", srcPattern, pattern, dst, isDestDir)
+	klog.V(6).Infof("creating mapper for srcPattern=%s pattern=%s dst=%s isDestDir=%t", srcPattern, pattern, dst, isDestDir)
 
 	// no wildcards
 	if !containsWildcards(pattern) {
@@ -437,7 +437,7 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string, check Di
 			options.RebaseNames = make(map[string]string)
 		}
 
-		glog.V(6).Infof("len=%d info.FromDir=%t info.IsDir=%t dstIsRoot=%t dstIsDir=%t srcIsDir=%t", len(infos), info.FromDir, info.IsDir(), dstIsRoot, dstIsDir, srcIsDir)
+		klog.V(6).Infof("len=%d info.FromDir=%t info.IsDir=%t dstIsRoot=%t dstIsDir=%t srcIsDir=%t", len(infos), info.FromDir, info.IsDir(), dstIsRoot, dstIsDir, srcIsDir)
 		switch {
 		case len(infos) > 1 && dstIsRoot:
 			// copying multiple things into root, no rename necessary ([Dockerfile, dir] -> [Dockerfile, dir])
@@ -485,14 +485,14 @@ func logArchiveOutput(r io.Reader, prefix string) {
 				if err != nil {
 					return err
 				}
-				glog.Infof("%s %s (%d %s)", prefix, h.Name, h.Size, h.FileInfo().Mode())
+				klog.Infof("%s %s (%d %s)", prefix, h.Name, h.Size, h.FileInfo().Mode())
 				if _, err := io.Copy(ioutil.Discard, tr); err != nil {
 					return err
 				}
 			}
 		}()
 		if err != io.EOF {
-			glog.Infof("%s: unable to log archive output: %v", prefix, err)
+			klog.Infof("%s: unable to log archive output: %v", prefix, err)
 			io.Copy(ioutil.Discard, pr)
 		}
 	}()

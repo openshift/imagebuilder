@@ -16,11 +16,11 @@ import (
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/openshift/imagebuilder/dockerfile/parser"
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/openshift/imagebuilder"
+	"github.com/openshift/imagebuilder/dockerfile/parser"
 	"github.com/openshift/imagebuilder/imageprogress"
 )
 
@@ -192,7 +192,7 @@ func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Sta
 					Config: b.Builder.Config(),
 				}
 				stageExecutor.Container = prereq.Container
-				glog.V(4).Infof("Using previous stage %s as image: %#v", from, stageExecutor.Image.Config)
+				klog.V(4).Infof("Using previous stage %s as image: %#v", from, stageExecutor.Image.Config)
 			}
 			stageFrom = from
 		}
@@ -251,7 +251,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			}
 			e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImage(from) })
 		}
-		glog.V(4).Infof("Retrieving image %q", from)
+		klog.V(4).Infof("Retrieving image %q", from)
 		e.Image, err = e.LoadImage(from)
 		if err != nil {
 			return err
@@ -270,7 +270,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 	} else {
 		e.LogFn("FROM %s", from)
 	}
-	glog.V(4).Infof("step: FROM %s as %s", from, e.Name)
+	klog.V(4).Infof("step: FROM %s as %s", from, e.Name)
 
 	b.Excludes = e.Excludes
 
@@ -338,7 +338,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			opts.HostConfig.Binds = append(originalBinds, binds...)
 		}
 
-		glog.V(4).Infof("Creating container with %#v %#v", opts.Config, opts.HostConfig)
+		klog.V(4).Infof("Creating container with %#v %#v", opts.Config, opts.HostConfig)
 		container, err := e.Client.CreateContainer(opts)
 		if err != nil {
 			return fmt.Errorf("unable to create build container: %v", err)
@@ -366,7 +366,7 @@ func (e *ClientExecutor) Execute(b *imagebuilder.Builder, node *parser.Node) err
 		if err := step.Resolve(child); err != nil {
 			return err
 		}
-		glog.V(4).Infof("step: %s", step.Original)
+		klog.V(4).Infof("step: %s", step.Original)
 		if e.LogFn != nil {
 			// original may have unescaped %, so perform fmt escaping
 			e.LogFn(strings.Replace(step.Original, "%", "%%", -1))
@@ -387,7 +387,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 	config := b.Config()
 
 	if e.Container.State.Running {
-		glog.V(4).Infof("Stopping container %s ...", e.Container.ID)
+		klog.V(4).Infof("Stopping container %s ...", e.Container.ID)
 		if err := e.Client.StopContainer(e.Container.ID, 0); err != nil {
 			return fmt.Errorf("unable to stop build container: %v", err)
 		}
@@ -400,12 +400,12 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 	var repository, tag string
 	if len(e.Tag) > 0 {
 		repository, tag = docker.ParseRepositoryTag(e.Tag)
-		glog.V(4).Infof("Committing built container %s as image %q: %#v", e.Container.ID, e.Tag, config)
+		klog.V(4).Infof("Committing built container %s as image %q: %#v", e.Container.ID, e.Tag, config)
 		if e.LogFn != nil {
 			e.LogFn("Committing changes to %s ...", e.Tag)
 		}
 	} else {
-		glog.V(4).Infof("Committing built container %s: %#v", e.Container.ID, config)
+		klog.V(4).Infof("Committing built container %s: %#v", e.Container.ID, config)
 		if e.LogFn != nil {
 			e.LogFn("Committing changes ...")
 		}
@@ -429,7 +429,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 	}
 
 	e.Image = image
-	glog.V(4).Infof("Committed %s to %s", e.Container.ID, image.ID)
+	klog.V(4).Infof("Committed %s to %s", e.Container.ID, image.ID)
 
 	if len(e.Tag) > 0 {
 		for _, s := range e.AdditionalTags {
@@ -557,7 +557,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 	}
 
 	if !e.AllowPull {
-		glog.V(4).Infof("image %s did not exist", from)
+		klog.V(4).Infof("image %s did not exist", from)
 		return nil, docker.ErrNoSuchImage
 	}
 
@@ -566,7 +566,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 		tag = "latest"
 	}
 
-	glog.V(4).Infof("attempting to pull %s with auth from repository %s:%s", from, repository, tag)
+	klog.V(4).Infof("attempting to pull %s with auth from repository %s:%s", from, repository, tag)
 
 	// TODO: we may want to abstract looping over multiple credentials
 	auth, _ := e.AuthFn(repository)
@@ -600,7 +600,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 				OutputStream:  pullWriter,
 				RawJSONStream: true,
 			}
-			if glog.V(5) {
+			if klog.V(5) {
 				pullImageOptions.OutputStream = os.Stderr
 				pullImageOptions.RawJSONStream = false
 			}
@@ -655,7 +655,7 @@ func (e *ClientExecutor) EnsureContainerPath(path string) error {
 				Mode:     0755,
 			})
 		}()
-		glog.V(4).Infof("Uploading empty archive to %q", dest)
+		klog.V(4).Infof("Uploading empty archive to %q", dest)
 		err := e.Client.UploadToContainer(e.Container.ID, opts)
 		if err != nil {
 			return fmt.Errorf("unable to ensure existence of preserved path %s: %v", dest, err)
@@ -751,7 +751,7 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	}
 
 	config.Cmd = args
-	glog.V(4).Infof("Running %#v inside of %s as user %s", config.Cmd, e.Container.ID, config.User)
+	klog.V(4).Infof("Running %#v inside of %s as user %s", config.Cmd, e.Container.ID, config.User)
 	exec, err := e.Client.CreateExec(docker.CreateExecOptions{
 		Cmd:          config.Cmd,
 		Container:    e.Container.ID,
@@ -773,7 +773,7 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 		return err
 	}
 	if status.ExitCode != 0 {
-		glog.V(4).Infof("Failed command (code %d): %v", status.ExitCode, args)
+		klog.V(4).Infof("Failed command (code %d): %v", status.ExitCode, args)
 		return fmt.Errorf("running '%s' failed with exit code %d", strings.Join(run.Args, " "), status.ExitCode)
 	}
 
@@ -799,7 +799,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 	for _, c := range copies {
 		// TODO: reuse source
 		for _, src := range c.Src {
-			glog.V(4).Infof("Archiving %s download=%t fromFS=%t from=%s", src, c.Download, c.FromFS, c.From)
+			klog.V(4).Infof("Archiving %s download=%t fromFS=%t from=%s", src, c.Download, c.FromFS, c.From)
 			var r io.Reader
 			var closer io.Closer
 			var err error
@@ -812,8 +812,8 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 				return err
 			}
 
-			glog.V(5).Infof("Uploading to %s at %s", container.ID, c.Dest)
-			if glog.V(6) {
+			klog.V(5).Infof("Uploading to %s at %s", container.ID, c.Dest)
+			if klog.V(6) {
 				logArchiveOutput(r, "Archive file for %s")
 			}
 			err = e.Client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
@@ -821,7 +821,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 				Path:        "/",
 			})
 			if err := closer.Close(); err != nil {
-				glog.Errorf("Error while closing stream container copy stream %s: %v", container.ID, err)
+				klog.Errorf("Error while closing stream container copy stream %s: %v", container.ID, err)
 			}
 			if err != nil {
 				return err
@@ -850,11 +850,11 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 		if other.Container == nil {
 			return nil, nil, fmt.Errorf("the stage %q has not been built yet", from)
 		}
-		glog.V(5).Infof("Using container %s as input for archive request", other.Container.ID)
+		klog.V(5).Infof("Using container %s as input for archive request", other.Container.ID)
 		containerID = other.Container.ID
 		containerConfig = other.Container.Config
 	} else {
-		glog.V(5).Infof("Creating a container temporarily for image input from %q in %s", from, src)
+		klog.V(5).Infof("Creating a container temporarily for image input from %q in %s", from, src)
 		_, err := e.LoadImage(from)
 		if err != nil {
 			return nil, nil, err
@@ -884,7 +884,7 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 		return nil, nil, err
 	}
 	go func() {
-		glog.V(6).Infof("Download from container %s at path %s", containerID, archiveRoot)
+		klog.V(6).Infof("Download from container %s at path %s", containerID, archiveRoot)
 		err := e.Client.DownloadFromContainer(containerID, docker.DownloadFromContainerOptions{
 			OutputStream: pw,
 			Path:         archiveRoot,
@@ -904,21 +904,21 @@ func (e *ClientExecutor) Archive(fromFS bool, src, dst string, allowDownload boo
 		if !allowDownload {
 			return nil, nil, fmt.Errorf("source can't be a URL")
 		}
-		glog.V(5).Infof("Archiving %s -> %s from URL", src, dst)
+		klog.V(5).Infof("Archiving %s -> %s from URL", src, dst)
 		return archiveFromURL(src, dst, e.TempDir, check)
 	}
 	// the input is from the filesystem, use the source as the input
 	if fromFS {
-		glog.V(5).Infof("Archiving %s %s -> %s from a filesystem location", src, ".", dst)
+		klog.V(5).Infof("Archiving %s %s -> %s from a filesystem location", src, ".", dst)
 		return archiveFromDisk(src, ".", dst, allowDownload, excludes, check)
 	}
 	// if the context is in archive form, read from it without decompressing
 	if len(e.ContextArchive) > 0 {
-		glog.V(5).Infof("Archiving %s %s -> %s from context archive", e.ContextArchive, src, dst)
+		klog.V(5).Infof("Archiving %s %s -> %s from context archive", e.ContextArchive, src, dst)
 		return archiveFromFile(e.ContextArchive, src, dst, excludes, check)
 	}
 	// if the context is a directory, we only allow relative includes
-	glog.V(5).Infof("Archiving %q %q -> %q from disk", e.Directory, src, dst)
+	klog.V(5).Infof("Archiving %q %q -> %q from disk", e.Directory, src, dst)
 	return archiveFromDisk(e.Directory, src, dst, allowDownload, excludes, check)
 }
 
@@ -966,7 +966,7 @@ func (t *ContainerVolumeTracker) ReleasePath(path string) {
 		if err != nil && !os.IsNotExist(err) {
 			t.errs = append(t.errs, err)
 		}
-		glog.V(5).Infof("Releasing path %s (%v)", path, err)
+		klog.V(5).Infof("Releasing path %s (%v)", path, err)
 		t.paths[path] = ""
 	}
 }
@@ -1044,7 +1044,7 @@ func snapshotPath(path, containerID, tempDir string, client *docker.Client) (str
 	if err != nil {
 		return "", err
 	}
-	glog.V(4).Infof("Snapshot %s for later use under %s", path, f.Name())
+	klog.V(4).Infof("Snapshot %s for later use under %s", path, f.Name())
 
 	r, w := io.Pipe()
 	tr := tar.NewReader(r)
@@ -1059,10 +1059,10 @@ func snapshotPath(path, containerID, tempDir string, client *docker.Client) (str
 		if err == nil || err == io.EOF {
 			tw.Flush()
 			w.Close()
-			glog.V(5).Infof("Snapshot rewritten from %s", path)
+			klog.V(5).Infof("Snapshot rewritten from %s", path)
 			return
 		}
-		glog.V(5).Infof("Snapshot of %s failed: %v", path, err)
+		klog.V(5).Infof("Snapshot of %s failed: %v", path, err)
 		w.CloseWithError(err)
 	}()
 
@@ -1092,7 +1092,7 @@ func (t *ContainerVolumeTracker) Restore(containerID string, client *docker.Clie
 		if len(archivePath) == 0 {
 			return fmt.Errorf("path %s does not have an archive and cannot be restored", dest)
 		}
-		glog.V(4).Infof("Restoring contents of %s from %s", dest, archivePath)
+		klog.V(4).Infof("Restoring contents of %s from %s", dest, archivePath)
 		if !strings.HasSuffix(dest, "/") {
 			dest = dest + "/"
 		}
