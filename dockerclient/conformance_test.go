@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift/imagebuilder/dockerfile/command"
-	"github.com/openshift/imagebuilder/dockerfile/parser"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/openshift/imagebuilder/dockerfile/command"
+	"github.com/openshift/imagebuilder/dockerfile/parser"
 
 	"github.com/openshift/imagebuilder"
 )
@@ -111,6 +111,8 @@ func TestCopyFrom(t *testing.T) {
 		{name: "copy file to deeper directory with explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c/", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},
 		{name: "copy file to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c", expect: "ls -al /a/b/c && ! ls -al /a/b/1"},
 		{name: "copy directory to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a /a/b/c", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},
+		{name: "copy item from directory that is a symbolic link", create: "mkdir -p /a && touch /a/1 && ln -s /a /b", copy: "b/1 /a/b/c", expect: "ls -al /a/b/c && ! ls -al /a/b/1"},
+		{name: "copy item from directory that is a symbolic link", create: "mkdir -p /a && touch /a/1 && ln -s a /c", copy: "/c/1 /a/b/c", expect: "ls -al /a/b/c && ! ls -al /a/b/1"},
 		{name: "copy directory to root without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "a /a", expect: "ls -al /a/1 && ! ls -al /a/a"},
 		{name: "copy directory trailing to root without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "a/. /a", expect: "ls -al /a/1 && ! ls -al /a/a"},
 	}
