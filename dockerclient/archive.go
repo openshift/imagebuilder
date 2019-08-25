@@ -154,13 +154,6 @@ func archiveFromURL(src, dst, tempDir string, check DirectoryCheck) (io.Reader, 
 }
 
 func archiveFromDisk(directory string, src, dst string, allowDownload bool, excludes []string, check DirectoryCheck) (io.Reader, io.Closer, error) {
-	var err error
-	if filepath.IsAbs(src) {
-		src, err = filepath.Rel(filepath.Dir(src), src)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
 
 	infos, err := CalcCopyInfo(src, directory, true)
 	if err != nil {
@@ -415,6 +408,10 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string, check Di
 		dstIsDir = isDir
 	}
 
+	if len(infos) > 1 && !dstIsDir {
+		return nil, fmt.Errorf("When using COPY with more than one source file, the destination must be an existing directory")
+	}
+
 	options := &archive.TarOptions{
 		ChownOpts: &idtools.IDPair{UID: 0, GID: 0},
 	}
@@ -442,17 +439,12 @@ func archiveOptionsFor(infos []CopyInfo, dst string, excludes []string, check Di
 
 		klog.V(6).Infof("len=%d info.FromDir=%t info.IsDir=%t dstIsRoot=%t dstIsDir=%t srcIsDir=%t", len(infos), info.FromDir, info.IsDir(), dstIsRoot, dstIsDir, srcIsDir)
 		switch {
-		case len(infos) > 1 && dstIsRoot:
-			// copying multiple things into root, no rename necessary ([Dockerfile, dir] -> [Dockerfile, dir])
-		case len(infos) > 1:
-			// put each input into the target, which is assumed to be a directory ([Dockerfile, dir] -> [a/Dockerfile, a/dir])
+		case info.FromDir:
+			// this is a file that was part of an explicit directory request, no transformation
 			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))
 		case info.FileInfo.IsDir():
 			// mapping a directory to a destination, explicit or not ([dir] -> [a])
 			options.RebaseNames[infoPath] = dst
-		case info.FromDir:
-			// this is a file that was part of an explicit directory request, no transformation
-			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))
 		case dstIsDir:
 			// mapping what is probably a file to a non-root directory ([Dockerfile] -> [dir/Dockerfile])
 			options.RebaseNames[infoPath] = path.Join(dst, path.Base(infoPath))

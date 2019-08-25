@@ -21,7 +21,7 @@ type CopyInfo struct {
 
 // CalcCopyInfo identifies the source files selected by a Dockerfile ADD or COPY instruction.
 func CalcCopyInfo(origPath, rootPath string, allowWildcards bool) ([]CopyInfo, error) {
-	explicitDir := origPath == "." || origPath == "/" || strings.HasSuffix(origPath, "/.") || strings.HasSuffix(origPath, "/")
+	explicitDir := origPath == "." || origPath == "/" || strings.HasSuffix(origPath, "/.")
 	// all CopyInfo resulting from this call will have FromDir set to explicitDir
 	infos, err := calcCopyInfo(origPath, rootPath, allowWildcards, explicitDir)
 	if err != nil {

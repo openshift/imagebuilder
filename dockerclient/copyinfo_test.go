@@ -29,17 +29,24 @@ func TestCalcCopyInfo(t *testing.T) {
 		{
 			origPath:       "*",
 			rootPath:       "testdata/dir",
+			dstPath:        "/",
 			allowWildcards: true,
 			errFn:          nilErr,
 			paths: map[string]struct{}{
 				"Dockerfile": {},
 				"file":       {},
 				"subdir":     {},
+			},
+			rebaseNames: map[string]string{
+				"file":       "/file",
+				"Dockerfile": "/Dockerfile",
+				"subdir":     "/",
 			},
 		},
 		{
 			origPath:       ".",
 			rootPath:       "testdata/dir",
+			dstPath:        "/",
 			allowWildcards: true,
 			errFn:          nilErr,
 			paths: map[string]struct{}{
@@ -47,16 +54,27 @@ func TestCalcCopyInfo(t *testing.T) {
 				"file":       {},
 				"subdir":     {},
 			},
+			rebaseNames: map[string]string{
+				"file":       "/file",
+				"Dockerfile": "/Dockerfile",
+				"subdir":     "/subdir",
+			},
 		},
 		{
 			origPath:       "/.",
 			rootPath:       "testdata/dir",
+			dstPath:        "/",
 			allowWildcards: true,
 			errFn:          nilErr,
 			paths: map[string]struct{}{
 				"Dockerfile": {},
 				"file":       {},
 				"subdir":     {},
+			},
+			rebaseNames: map[string]string{
+				"file":       "/file",
+				"Dockerfile": "/Dockerfile",
+				"subdir":     "/subdir",
 			},
 		},
 		{
@@ -79,7 +97,7 @@ func TestCalcCopyInfo(t *testing.T) {
 		},
 		{
 			origPath:       ".",
-			dstPath:        "copy",
+			dstPath:        "copy/",
 			rootPath:       "testdata/dir",
 			allowWildcards: true,
 			errFn:          nilErr,
