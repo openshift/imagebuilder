@@ -3,9 +3,63 @@ package imagebuilder
 import (
 	"reflect"
 	"testing"
+	"sort"
+	"errors"
+	"github.com/containerd/containerd/platforms"
 
 	docker "github.com/fsouza/go-dockerclient"
 )
+
+func TestDispatchArgDefaultBuiltins(t *testing.T) {
+	mybuilder := *NewBuilder(make(map[string]string))
+	args := []string{"TARGETPLATFORM"}
+	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+		t.Errorf("arg error: %v", err)
+	}
+	args = []string{"BUILDARCH"}
+	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+		t.Errorf("arg(2) error: %v", err)
+	}
+	localspec := platforms.DefaultSpec()
+	expectedArgs := []string {
+		"BUILDARCH=" + localspec.Architecture,
+		"TARGETPLATFORM=" + localspec.OS + "/" + localspec.Architecture,
+	}
+	got := mybuilder.Arguments()
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, expectedArgs) {
+		t.Errorf("Expected %v, got %v\n", expectedArgs, got)
+	}
+}
+
+func TestDispatchArgTargetPlatform(t *testing.T) {
+	mybuilder := *NewBuilder(make(map[string]string))
+	args := []string{"TARGETPLATFORM=linux/arm/v7"}
+	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+		t.Errorf("arg error: %v", err)
+	}
+	expectedArgs := []string {
+		"TARGETARCH=arm",
+		"TARGETOS=linux",
+		"TARGETPLATFORM=linux/arm/v7",
+		"TARGETVARIANT=v7",
+	}
+	got := mybuilder.Arguments()
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, expectedArgs) {
+		t.Errorf("Expected %v, got %v\n", expectedArgs, got)
+	}
+}
+
+func TestDispatchArgTargetPlatformBad(t *testing.T) {
+	mybuilder := *NewBuilder(make(map[string]string))
+	args := []string{"TARGETPLATFORM=bozo"}
+	err := arg(&mybuilder, args, nil, nil, "")
+	expectedErr := errors.New("error parsing TARGETPLATFORM argument")
+	if !reflect.DeepEqual(err, expectedErr) {
+		t.Errorf("Expected %v, got %v\n", expectedErr, err)
+	}
+}
 
 func TestDispatchCopy(t *testing.T) {
 	mybuilder := Builder{
