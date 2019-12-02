@@ -34,7 +34,6 @@ github.com/docker/docker/api/types/swarm
 github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/docker/api/types/versions
 github.com/docker/docker/opts
-github.com/docker/docker/pkg/archive
 github.com/docker/docker/pkg/fileutils
 github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/idtools
@@ -42,14 +41,13 @@ github.com/docker/docker/pkg/ioutils
 github.com/docker/docker/pkg/longpath
 github.com/docker/docker/pkg/mount
 github.com/docker/docker/pkg/pools
-github.com/docker/docker/pkg/promise
 github.com/docker/docker/pkg/stdcopy
 github.com/docker/docker/pkg/system
 # github.com/docker/go-connections v0.4.1-0.20180821093606-97c2040d34df
 github.com/docker/go-connections/nat
 # github.com/docker/go-units v0.3.4-0.20181030082039-2fb04c6466a5
 github.com/docker/go-units
-# github.com/fsouza/go-dockerclient v0.0.0-00010101000000-000000000000 => github.com/openshift/go-dockerclient v0.0.0-20181016170459-ff9568be2219
+# github.com/fsouza/go-dockerclient v1.5.0 => github.com/openshift/go-dockerclient v0.0.0-20181016170459-ff9568be2219
 github.com/fsouza/go-dockerclient
 github.com/fsouza/go-dockerclient/internal/archive
 github.com/fsouza/go-dockerclient/internal/jsonmessage

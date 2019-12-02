@@ -11,7 +11,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20170829193243-b68221c37ee5
 	github.com/docker/go-connections v0.4.1-0.20180821093606-97c2040d34df // indirect
 	github.com/docker/go-units v0.3.4-0.20181030082039-2fb04c6466a5 // indirect
-	github.com/fsouza/go-dockerclient v0.0.0-00010101000000-000000000000
+	github.com/fsouza/go-dockerclient v1.5.0
 	github.com/gogo/protobuf v1.2.2-0.20190306082329-c5a62797aee0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1.0.20190228220655-ac19fd6e7483 // indirect
