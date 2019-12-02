@@ -1,3 +1,5 @@
+GO ?= go
+
 build:
 	go build ./cmd/imagebuilder
 .PHONY: build
@@ -9,3 +11,10 @@ test:
 test-conformance:
 	go test -v -tags conformance -timeout 10m ./dockerclient
 .PHONY: test-conformance
+
+vendor:
+	export GO111MODULE=on \
+		$(GO) mod tidy && \
+		$(GO) mod vendor && \
+		$(GO) mod verify
+.PHONY: vendor
