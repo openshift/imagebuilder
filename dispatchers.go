@@ -153,18 +153,16 @@ func add(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 	var chown string
 	last := len(args) - 1
 	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
-	if len(flagArgs) > 0 {
-		for _, a := range flagArgs {
-			arg, err := ProcessWord(a, b.Env)
-			if err != nil {
-				return err
-			}
-			switch {
-			case strings.HasPrefix(arg, "--chown="):
-				chown = strings.TrimPrefix(arg, "--chown=")
-			default:
-				return fmt.Errorf("ADD only supports the --chown=<uid:gid> flag")
-			}
+	for _, a := range flagArgs {
+		arg, err := ProcessWord(a, b.Env)
+		if err != nil {
+			return err
+		}
+		switch {
+		case strings.HasPrefix(arg, "--chown="):
+			chown = strings.TrimPrefix(arg, "--chown=")
+		default:
+			return fmt.Errorf("ADD only supports the --chown=<uid:gid> flag")
 		}
 	}
 	b.PendingCopies = append(b.PendingCopies, Copy{Src: args[0:last], Dest: dest, Download: true, Chown: chown})
@@ -183,20 +181,18 @@ func dispatchCopy(b *Builder, args []string, attributes map[string]bool, flagArg
 	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
 	var chown string
 	var from string
-	if len(flagArgs) > 0 {
-		for _, a := range flagArgs {
-			arg, err := ProcessWord(a, b.Env)
-			if err != nil {
-				return err
-			}
-			switch {
-			case strings.HasPrefix(arg, "--chown="):
-				chown = strings.TrimPrefix(arg, "--chown=")
-			case strings.HasPrefix(arg, "--from="):
-				from = strings.TrimPrefix(arg, "--from=")
-			default:
-				return fmt.Errorf("COPY only supports the --chown=<uid:gid> and the --from=<image|stage> flags")
-			}
+	for _, a := range flagArgs {
+		arg, err := ProcessWord(a, b.Env)
+		if err != nil {
+			return err
+		}
+		switch {
+		case strings.HasPrefix(arg, "--chown="):
+			chown = strings.TrimPrefix(arg, "--chown=")
+		case strings.HasPrefix(arg, "--from="):
+			from = strings.TrimPrefix(arg, "--from=")
+		default:
+			return fmt.Errorf("COPY only supports the --chown=<uid:gid> and the --from=<image|stage> flags")
 		}
 	}
 	b.PendingCopies = append(b.PendingCopies, Copy{From: from, Src: args[0:last], Dest: dest, Download: false, Chown: chown})
