@@ -19,9 +19,9 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
+	"github.com/containerd/containerd/platforms"
 	"github.com/openshift/imagebuilder/signal"
 	"github.com/openshift/imagebuilder/strslice"
-	"github.com/containerd/containerd/platforms"
 )
 
 var (
@@ -154,7 +154,11 @@ func add(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 	last := len(args) - 1
 	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
 	if len(flagArgs) > 0 {
-		for _, arg := range flagArgs {
+		for _, a := range flagArgs {
+			arg, err := ProcessWord(a, b.Env)
+			if err != nil {
+				return err
+			}
 			switch {
 			case strings.HasPrefix(arg, "--chown="):
 				chown = strings.TrimPrefix(arg, "--chown=")
@@ -180,7 +184,11 @@ func dispatchCopy(b *Builder, args []string, attributes map[string]bool, flagArg
 	var chown string
 	var from string
 	if len(flagArgs) > 0 {
-		for _, arg := range flagArgs {
+		for _, a := range flagArgs {
+			arg, err := ProcessWord(a, b.Env)
+			if err != nil {
+				return err
+			}
 			switch {
 			case strings.HasPrefix(arg, "--chown="):
 				chown = strings.TrimPrefix(arg, "--chown=")
@@ -538,8 +546,7 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, flagArgs
 	return nil
 }
 
-
-var targetArgs = []string {"TARGETOS", "TARGETARCH", "TARGETVARIANT"}
+var targetArgs = []string{"TARGETOS", "TARGETARCH", "TARGETVARIANT"}
 
 // ARG name[=value]
 //
