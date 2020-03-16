@@ -224,7 +224,7 @@ func archiveFromContainer(in io.Reader, src, dst string, excludes []string, chec
 	r, err := transformArchive(in, false, mapper.Filter)
 	rc := readCloser{Reader: r, Closer: newCloser(func() error {
 		if !mapper.foundItems {
-			return fmt.Errorf("%v: %s", os.ErrNotExist, src)
+			return makeNotExistError(src)
 		}
 		return nil
 	})}
