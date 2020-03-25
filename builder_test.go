@@ -7,11 +7,14 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+
+	"github.com/openshift/imagebuilder/dockerfile/parser"
 )
 
 func TestVolumeSet(t *testing.T) {
@@ -159,6 +162,19 @@ func TestMultiStageParseHeadingArg(t *testing.T) {
 	if len(stages) != 3 {
 		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
+
+	fromImages := []string{"golang:1.9", "busybox:latest", "golang:1.9"}
+	for i, stage := range stages {
+		from, err := stage.Builder.From(stage.Node)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if expected := fromImages[i]; from != expected {
+			t.Fatalf("expected %s, got %s", expected, from)
+		}
+	}
+
 	t.Logf("stages: %#v", stages)
 }
 
@@ -189,6 +205,216 @@ RUN echo $FOO $BAR`))
 				t.Fatalf("expected %s, got %s", tc.expectedFrom, from)
 			}
 		})
+	}
+}
+
+func resolveNodeArgs(b *Builder, node *parser.Node) error {
+	for _, c := range node.Children {
+		if c.Value != "arg" {
+			continue
+		}
+		step := b.Step()
+		if err := step.Resolve(c); err != nil {
+			return err
+		}
+		if err := b.Run(step, NoopExecutor, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func builderHasArgument(b *Builder, argString string) bool {
+	for _, arg := range b.Arguments() {
+		if arg == argString {
+			return true
+		}
+	}
+	return false
+}
+
+func TestMultiStageHeadingArgRedefine(t *testing.T) {
+	n, err := ParseFile("dockerclient/testdata/multistage/Dockerfile.heading-redefine")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err := NewStages(n, NewBuilder(map[string]string{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages))
+	}
+
+	for _, stage := range stages {
+		if err := resolveNodeArgs(stage.Builder, stage.Node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	firstStageHasArg := false
+	for _, arg := range stages[0].Builder.Arguments() {
+		if match, err := regexp.MatchString(`FOO=.*`, arg); err == nil && match {
+			firstStageHasArg = true
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if firstStageHasArg {
+		t.Fatalf("expected FOO to not be present in first stage")
+	}
+
+	if !builderHasArgument(stages[1].Builder, "FOO=latest") {
+		t.Fatalf("expected FOO=latest in second stage arguments list, got %v", stages[1].Builder.Arguments())
+	}
+}
+
+func TestMultiStageHeadingArgRedefineOverride(t *testing.T) {
+	n, err := ParseFile("dockerclient/testdata/multistage/Dockerfile.heading-redefine")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err := NewStages(n, NewBuilder(map[string]string{"FOO": "7"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages))
+	}
+
+	for _, stage := range stages {
+		if err := resolveNodeArgs(stage.Builder, stage.Node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	firstStageHasArg := false
+	for _, arg := range stages[0].Builder.Arguments() {
+		if match, err := regexp.MatchString(`FOO=.*`, arg); err == nil && match {
+			firstStageHasArg = true
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if firstStageHasArg {
+		t.Fatalf("expected FOO to not be present in first stage")
+	}
+
+	if !builderHasArgument(stages[1].Builder, "FOO=7") {
+		t.Fatalf("expected FOO=7 in second stage arguments list, got %v", stages[1].Builder.Arguments())
+	}
+}
+
+func TestArgs(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		dockerfile    string
+		args          map[string]string
+		expectedValue string
+	}{
+		{
+			name:          "argOverride",
+			dockerfile:    "FROM centos\nARG FOO=stuff\nARG FOO=things\n",
+			args:          map[string]string{},
+			expectedValue: "FOO=things",
+		},
+		{
+			name:          "argOverrideWithBuildArgs",
+			dockerfile:    "FROM centos\nARG FOO=stuff\nARG FOO=things\n",
+			args:          map[string]string{"FOO": "bar"},
+			expectedValue: "FOO=bar",
+		},
+		{
+			name:          "headingArgRedefine",
+			dockerfile:    "ARG FOO=stuff\nFROM centos\nARG FOO\n",
+			args:          map[string]string{},
+			expectedValue: "FOO=stuff",
+		},
+		{
+			name:          "headingArgRedefineWithBuildArgs",
+			dockerfile:    "ARG FOO=stuff\nFROM centos\nARG FOO\n",
+			args:          map[string]string{"FOO": "bar"},
+			expectedValue: "FOO=bar",
+		},
+		{
+			name:          "headingArgRedefineDefault",
+			dockerfile:    "ARG FOO=stuff\nFROM centos\nARG FOO=defaultfoovalue\n",
+			args:          map[string]string{},
+			expectedValue: "FOO=defaultfoovalue",
+		},
+		{
+			name:          "headingArgRedefineDefaultWithBuildArgs",
+			dockerfile:    "ARG FOO=stuff\nFROM centos\nARG FOO=defaultfoovalue\n",
+			args:          map[string]string{"FOO": "bar"},
+			expectedValue: "FOO=bar",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			node, err := ParseDockerfile(strings.NewReader(tc.dockerfile))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			b := NewBuilder(tc.args)
+			if err := resolveNodeArgs(b, node); err != nil {
+				t.Fatal(err)
+			}
+
+			if !builderHasArgument(b, tc.expectedValue) {
+				t.Fatalf("expected %s to be contained in arguments list: %v", tc.expectedValue, b.Arguments())
+			}
+		})
+	}
+}
+
+func TestMultiStageArgScope(t *testing.T) {
+	n, err := ParseFile("dockerclient/testdata/multistage/Dockerfile.arg-scope")
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := map[string]string{
+		"SECRET": "secretthings",
+		"BAR":    "notsecretthings",
+	}
+	stages, err := NewStages(n, NewBuilder(args))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages))
+	}
+
+	for _, stage := range stages {
+		if err := resolveNodeArgs(stage.Builder, stage.Node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if !builderHasArgument(stages[0].Builder, "SECRET=secretthings") {
+		t.Fatalf("expected SECRET=secretthings to be contained in first stage arguments list: %v", stages[0].Builder.Arguments())
+	}
+
+	secondStageArguments := stages[1].Builder.Arguments()
+	secretInSecondStage := false
+	for _, arg := range secondStageArguments {
+		if match, err := regexp.MatchString(`SECRET=.*`, arg); err == nil && match {
+			secretInSecondStage = true
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if secretInSecondStage {
+		t.Fatalf("expected SECRET to not be present in second stage")
+	}
+
+	if !builderHasArgument(stages[1].Builder, "FOO=test") {
+		t.Fatalf("expected FOO=test to be present in second stage arguments list: %v", secondStageArguments)
+	}
+	if !builderHasArgument(stages[1].Builder, "BAR=notsecretthings") {
+		t.Fatalf("expected BAR=notsecretthings to be present in second stage arguments list: %v", secondStageArguments)
 	}
 }
 
