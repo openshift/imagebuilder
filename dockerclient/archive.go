@@ -414,6 +414,25 @@ func (m *archiveMapper) Filter(h *tar.Header, r io.Reader) ([]byte, bool, bool, 
 	m.foundItems = true
 
 	h.Name = newName
+
+	if h.Typeflag == tar.TypeLink {
+		// run the link target name through the same mapping the Name
+		// in the target's entry would have gotten
+		linkName := strings.TrimPrefix(h.Linkname, "/")
+		if !strings.HasPrefix(linkName, m.prefix) {
+			klog.V(6).Infof("No prefix %q in link target %q", m.prefix, h.Linkname)
+			return nil, false, true, nil
+		}
+		linkName = strings.TrimPrefix(strings.TrimPrefix(linkName, m.prefix), "/")
+		newTarget, ok := m.rename(linkName, false)
+		if !ok {
+			klog.V(6).Infof("Transform link target %s -> %s: ok=%t skip=%t", h.Linkname, newTarget, ok, true)
+			return nil, false, true, nil
+		}
+		klog.V(6).Infof("Transform link target %s -> %s: ok=%t", h.Linkname, newTarget, ok)
+		h.Linkname = newTarget
+	}
+
 	// include all files
 	return nil, false, false, nil
 }
