@@ -177,6 +177,39 @@ func TestDispatchAddChownWithEnvironment(t *testing.T) {
 	}
 }
 
+func TestDispatchAddChownWithArg(t *testing.T) {
+	argsMap := make(map[string]string)
+	argsMap["CHOWN_VAL"] = "6731:6731"
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+		Args: argsMap,
+	}
+
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=${CHOWN_VAL}"}
+	original := "ADD --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: true,
+			Chown:    "6731:6731",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
 func TestDispatchCopyChownWithEnvironment(t *testing.T) {
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -184,6 +217,73 @@ func TestDispatchCopyChownWithEnvironment(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
+		Env: []string{"CHOWN_VAL=6731:6731"},
+	}
+
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=${CHOWN_VAL}"}
+	original := "COPY --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchCopy error: %v", err)
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: false,
+			Chown:    "6731:6731",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
+func TestDispatchCopyChownWithArg(t *testing.T) {
+	argsMap := make(map[string]string)
+	argsMap["CHOWN_VAL"] = "6731:6731"
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+		Args: argsMap,
+	}
+
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=${CHOWN_VAL}"}
+	original := "COPY --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchCopy error: %v", err)
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: false,
+			Chown:    "6731:6731",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
+func TestDispatchCopyChownWithSameArgAndEnv(t *testing.T) {
+	argsMap := make(map[string]string)
+	argsMap["CHOWN_VAL"] = "4321:4321"
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+		Args: argsMap,
 		Env: []string{"CHOWN_VAL=6731:6731"},
 	}
 
