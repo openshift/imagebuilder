@@ -23,7 +23,7 @@ func TestDispatchArgDefaultBuiltins(t *testing.T) {
 	localspec := platforms.DefaultSpec()
 	expectedArgs := []string{
 		"BUILDARCH=" + localspec.Architecture,
-		"TARGETPLATFORM=" + localspec.OS + "/" + localspec.Architecture,
+		"TARGETPLATFORM=" + platforms.DefaultString(),
 	}
 	got := mybuilder.Arguments()
 	sort.Strings(got)
