@@ -333,9 +333,8 @@ func ParseFile(path string) (*parser.Node, error) {
 // Step creates a new step from the current state.
 func (b *Builder) Step() *Step {
 	dst := make([]string, len(b.Env)+len(b.RunConfig.Env))
-	copy(dst, b.Env)
+	copy(dst, makeUserArgs(b))
 	dst = append(dst, b.RunConfig.Env...)
-	dst = append(dst, b.Arguments()...)
 	return &Step{Env: dst}
 }
 
