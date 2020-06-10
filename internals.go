@@ -98,18 +98,18 @@ func parseOptInterval(f *flag.Flag) (time.Duration, error) {
 // defined by both can later be evaluated when resolving variables
 // such as ${MY_USER}.  If the variable is defined by both ARG and ENV
 // don't include the definition of the ARG variable.
-func makeUserArgs(b *Builder) (userArgs []string) {
+func makeUserArgs(bEnv []string, bArgs map[string]string) (userArgs []string) {
 
-	userArgs = b.Env
+	userArgs = bEnv
 	envMap := make(map[string]string)
-	for _, envVal := range b.Env {
+	for _, envVal := range bEnv {
 		val := strings.Split(envVal, "=")
 		if len(val) > 1 {
 			envMap[val[0]] = val[1]
 		}
 	}
 
-	for key, value := range b.Args {
+	for key, value := range bArgs {
 		if _, ok := envMap[key]; ok {
 			continue
 		}
