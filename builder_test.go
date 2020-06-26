@@ -819,3 +819,39 @@ func TestRunWithEnvArgConflict(t *testing.T) {
 	t.Logf("config: %#v", b.Config())
 	t.Logf(node.Dump())
 }
+
+func TestRunWithMultiArg(t *testing.T) {
+	f, err := os.Open("dockerclient/testdata/Dockerfile.multiarg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node, err := ParseDockerfile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := NewBuilder(nil)
+	from, err := b.From(node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from != "alpine" {
+		t.Fatalf("unexpected from: %s", from)
+	}
+	for _, child := range node.Children {
+		step := b.Step()
+		if err := step.Resolve(child); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Run(step, LogExecutor, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	configString := fmt.Sprintf("%v", b.Config())
+	expectedValue := "multival=a=1 b=2 c=3 d=4"
+	if !strings.Contains(configString, expectedValue) {
+		t.Fatalf("expected %s to be contained in the Configuration list: %s", expectedValue, configString)
+	}
+
+	t.Logf("config: %#v", b.Config())
+	t.Logf(node.Dump())
+}
