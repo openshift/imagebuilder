@@ -770,7 +770,8 @@ func TestBuilder(t *testing.T) {
 			lastConfig := b.RunConfig
 			if !reflect.DeepEqual(test.Config, lastConfig) {
 				data, _ := json.Marshal(lastConfig)
-				t.Errorf("%d: unexpected config: %s", i, string(data))
+				expected, _ := json.Marshal(test.Config)
+				t.Errorf("%d: unexpected config: %s should be %s", i, string(data), string(expected))
 			}
 		})
 	}
