@@ -389,8 +389,8 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "9.3",
-			Dockerfile: "9.3/Dockerfile",
+			ContextDir: "13",
+			Dockerfile: "13/Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{
 				func(a, b *tar.Header) bool {
