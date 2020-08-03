@@ -85,7 +85,7 @@ func env(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		// value ==> args[j+1]
 		newVar := []string{args[j] + "=" + args[j+1]}
 		b.RunConfig.Env = mergeEnv(b.RunConfig.Env, newVar)
-		b.Env = mergeEnv(b.RunConfig.Env, newVar)
+		b.Env = mergeEnv(b.Env, newVar)
 		j++
 	}
 
