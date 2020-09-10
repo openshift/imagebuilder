@@ -31,7 +31,7 @@ func main() {
 	var version bool
 	var mountSpecs stringSliceFlag
 
-	VERSION := "1.1.7"
+	VERSION := "1.2-dev"
 	arguments := stringMapFlag{}
 
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
