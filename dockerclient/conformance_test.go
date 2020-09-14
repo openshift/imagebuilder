@@ -770,6 +770,10 @@ func normalizeOutputMetadata(a, b *docker.Config) {
 		// we are forced to set Entrypoint [] to reset the entrypoint
 		b.Entrypoint = nil
 	}
+	if len(a.Labels) == 0 && len(b.Labels) == 0 {
+		a.Labels = nil
+		b.Labels = nil
+	}
 	// Serialization of OnBuild is omitempty, which means it may be nil or empty depending on
 	// docker version
 	if len(a.OnBuild) == len(b.OnBuild) && len(a.OnBuild) == 0 {
