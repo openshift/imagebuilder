@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -855,4 +856,58 @@ func TestRunWithMultiArg(t *testing.T) {
 
 	t.Logf("config: %#v", b.Config())
 	t.Logf(node.Dump())
+}
+
+func TestParseDockerignore(t *testing.T) {
+	dir, err := ioutil.TempDir("", "dockerignore*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	tests := []struct {
+		input, result []string
+	}{
+		{
+			input:  []string{"first", "second", "", "third", "fourth"},
+			result: []string{"first", "second", "third", "fourth"},
+		},
+		{
+			input:  []string{"#first", "#second", "", "third", "fourth"},
+			result: []string{"third", "fourth"},
+		},
+		{
+			input:  []string{"", "first", "second", "", " #third", "#invalid pattern which shouldn't matter ("},
+			result: []string{"first", "second", " #third"},
+		},
+		{
+			input:  []string{"", "first", "second", "", "#third", ""},
+			result: []string{"first", "second"},
+		},
+		{
+			input:  []string{"first", "second", "", "th#rd", "fourth", "fifth#"},
+			result: []string{"first", "second", "th#rd", "fourth", "fifth#"},
+		},
+	}
+	dockerignore := filepath.Join(dir, ".dockerignore")
+	for _, test := range tests {
+		f, err := os.Create(dockerignore)
+		if err != nil {
+			t.Fatalf("error creating %q: %v", dockerignore, err)
+		}
+		fmt.Fprintf(f, "%s\n", strings.Join(test.input, "\n"))
+		f.Close()
+		excludes, err := ParseDockerignore(dir)
+		if err != nil {
+			t.Fatalf("error reading %q: %v", dockerignore, err)
+		}
+		if len(excludes) != len(test.result) {
+			t.Errorf("expected to read back %#v, got %#v", test.result, excludes)
+		}
+		for i := range excludes {
+			if excludes[i] != test.result[i] {
+				t.Errorf("expected to read back %#v, got %#v", test.result, excludes)
+			}
+		}
+	}
 }
