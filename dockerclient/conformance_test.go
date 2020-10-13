@@ -313,6 +313,11 @@ func TestConformanceInternal(t *testing.T) {
 			Dockerfile: "Dockerfile.copy",
 		},
 		{
+			Name:       "add directories with archives",
+			ContextDir: "testdata/add",
+			Dockerfile: "Dockerfile.addall",
+		},
+		{
 			Name:       "run with JSON",
 			Dockerfile: "testdata/Dockerfile.run.args",
 			Output: []*regexp.Regexp{
