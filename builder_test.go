@@ -888,6 +888,10 @@ func TestParseDockerignore(t *testing.T) {
 			input:  []string{"first", "second", "", "th#rd", "fourth", "fifth#"},
 			result: []string{"first", "second", "th#rd", "fourth", "fifth#"},
 		},
+		{
+			input:  []string{"/first", "second/", "/third/", "///fourth//", "fif/th#", "/"},
+			result: []string{"first", "second", "third", "fourth", "fif/th#"},
+		},
 	}
 
 	testIgnore := func(ignorefile string) {

@@ -569,15 +569,18 @@ var builtinAllowedBuildArgs = map[string]bool{
 func ParseIgnore(path string) ([]string, error) {
 	var excludes []string
 
-	ignore, err := ioutil.ReadFile(path)
+	ignores, err := ioutil.ReadFile(path)
 	if err != nil {
 		return excludes, err
 	}
-	for _, e := range strings.Split(string(ignore), "\n") {
-		if len(e) == 0 || e[0] == '#' {
+	for _, ignore := range strings.Split(string(ignores), "\n") {
+		if len(ignore) == 0 || ignore[0] == '#' {
 			continue
 		}
-		excludes = append(excludes, e)
+		ignore = strings.Trim(ignore, "/")
+		if len(ignore) > 0 {
+			excludes = append(excludes, ignore)
+		}
 	}
 	return excludes, nil
 }
