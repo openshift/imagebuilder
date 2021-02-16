@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/containerd/containerd/platforms"
-
 	docker "github.com/fsouza/go-dockerclient"
 )
 
