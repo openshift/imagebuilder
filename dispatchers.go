@@ -153,6 +153,10 @@ func add(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 			chown = strings.TrimPrefix(arg, "--chown=")
 		case strings.HasPrefix(arg, "--chmod="):
 			chmod = strings.TrimPrefix(arg, "--chmod=")
+			_, err = strconv.ParseUint(chmod, 8, 32)
+			if err != nil {
+				return errChmodConversion(chmod)
+			}
 		default:
 			return fmt.Errorf("ADD only supports the --chmod=<permissions> and the --chown=<uid:gid> flag")
 		}
@@ -185,6 +189,10 @@ func dispatchCopy(b *Builder, args []string, attributes map[string]bool, flagArg
 			chown = strings.TrimPrefix(arg, "--chown=")
 		case strings.HasPrefix(arg, "--chmod="):
 			chmod = strings.TrimPrefix(arg, "--chmod=")
+			_, err = strconv.ParseUint(chmod, 8, 32)
+			if err != nil {
+				return errChmodConversion(chmod)
+			}
 		case strings.HasPrefix(arg, "--from="):
 			from = strings.TrimPrefix(arg, "--from=")
 		default:
@@ -628,6 +636,10 @@ func shell(b *Builder, args []string, attributes map[string]bool, flagArgs []str
 		return errNotJSON("SHELL")
 	}
 	return nil
+}
+
+func errChmodConversion(chmod string) error {
+	return fmt.Errorf("Error parsing chmod %s", chmod)
 }
 
 func errAtLeastOneArgument(command string) error {

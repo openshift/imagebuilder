@@ -168,21 +168,9 @@ func TestDispatchCopyChmod(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=888"}
 	original := "COPY --chmod=888 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
-	}
-	expectedPendingCopies := []Copy{
-		{
-			From:     "",
-			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
-			Dest:     "/root/", // destination must contain a trailing slash
-			Download: false,
-			Chown:    "",
-			Chmod:    "777",
-		},
-	}
-	if reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
-		t.Errorf("Expected %v, to not match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	err := dispatchCopy(&mybuilder, args, nil, flagArgs, original)
+	if err.Error() != errChmodConversion("888").Error() {
+		t.Errorf("Expected chmod conversion error, instead got error: %v", err)
 	}
 
 	// Test Good chmod values
@@ -191,7 +179,7 @@ func TestDispatchCopyChmod(t *testing.T) {
 	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original); err != nil {
 		t.Errorf("dispatchCopy error: %v", err)
 	}
-	expectedPendingCopies = []Copy{
+	expectedPendingCopies := []Copy{
 		{
 			From:     "",
 			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
@@ -606,22 +594,11 @@ func TestDispatchAddChmod(t *testing.T) {
 
 	// Test Bad chmod values
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
-	flagArgs := []string{"--chmod=888"}
-	original := "ADD --chmod=888 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
-	}
-	expectedPendingCopies := []Copy{
-		{
-			From:     "",
-			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
-			Dest:     "/root/", // destination must contain a trailing slash
-			Download: false,
-			Chmod:    "755",
-		},
-	}
-	if reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
-		t.Errorf("Expected %v, to not match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	flagArgs := []string{"--chmod=rwxrwxrwx"}
+	original := "ADD --chmod=rwxrwxrwx /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
+	err := add(&mybuilder, args, nil, flagArgs, original)
+	if err.Error() != errChmodConversion("rwxrwxrwx").Error() {
+		t.Errorf("Expected chmod conversion error, instead got error: %v", err)
 	}
 
 	// Test Good chmod values
@@ -630,7 +607,7 @@ func TestDispatchAddChmod(t *testing.T) {
 	if err := add(&mybuilder2, args, nil, flagArgs, original); err != nil {
 		t.Errorf("dispatchAdd error: %v", err)
 	}
-	expectedPendingCopies = []Copy{
+	expectedPendingCopies := []Copy{
 		{
 			From:     "",
 			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
