@@ -169,8 +169,13 @@ func TestDispatchCopyChmod(t *testing.T) {
 	flagArgs := []string{"--chmod=888"}
 	original := "COPY --chmod=888 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
 	err := dispatchCopy(&mybuilder, args, nil, flagArgs, original)
-	if err.Error() != errChmodConversion("888").Error() {
+	chmod := "888"
+	convErr := checkChmodConversion(chmod)
+	if err != nil && convErr != nil && err.Error() != convErr.Error() {
 		t.Errorf("Expected chmod conversion error, instead got error: %v", err)
+	}
+	if err == nil || convErr == nil {
+		t.Errorf("Expected conversion error for chmod %s", chmod)
 	}
 
 	// Test Good chmod values
@@ -597,8 +602,13 @@ func TestDispatchAddChmod(t *testing.T) {
 	flagArgs := []string{"--chmod=rwxrwxrwx"}
 	original := "ADD --chmod=rwxrwxrwx /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
 	err := add(&mybuilder, args, nil, flagArgs, original)
-	if err.Error() != errChmodConversion("rwxrwxrwx").Error() {
+	chmod := "rwxrwxrwx"
+	convErr := checkChmodConversion(chmod)
+	if err != nil && convErr != nil && err.Error() != convErr.Error() {
 		t.Errorf("Expected chmod conversion error, instead got error: %v", err)
+	}
+	if err == nil || convErr == nil {
+		t.Errorf("Expected conversion error for chmod %s", chmod)
 	}
 
 	// Test Good chmod values
