@@ -30,6 +30,7 @@ type Copy struct {
 	// If set, the owner:group for the destination.  This value is passed
 	// to the executor for handling.
 	Chown string
+	Chmod string
 }
 
 // Run defines a run operation required in the container.
@@ -60,7 +61,7 @@ func (logExecutor) EnsureContainerPath(path string) error {
 
 func (logExecutor) Copy(excludes []string, copies ...Copy) error {
 	for _, c := range copies {
-		log.Printf("COPY %v -> %s (from:%s download:%t), chown: %s", c.Src, c.Dest, c.From, c.Download, c.Chown)
+		log.Printf("COPY %v -> %s (from:%s download:%t), chown: %s, chmod %s", c.Src, c.Dest, c.From, c.Download, c.Chown, c.Chmod)
 	}
 	return nil
 }
