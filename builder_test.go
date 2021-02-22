@@ -888,18 +888,62 @@ func TestParseDockerignore(t *testing.T) {
 			input:  []string{"first", "second", "", "th#rd", "fourth", "fifth#"},
 			result: []string{"first", "second", "th#rd", "fourth", "fifth#"},
 		},
+		{
+			input:  []string{"/first", "second/", "/third/", "///fourth//", "fif/th#", "/"},
+			result: []string{"first", "second", "third", "fourth", "fif/th#"},
+		},
 	}
-	dockerignore := filepath.Join(dir, ".dockerignore")
+
+	testIgnore := func(ignorefile string) {
+		for _, test := range tests {
+			f, err := os.Create(ignorefile)
+			if err != nil {
+				t.Fatalf("error creating %q: %v", ignorefile, err)
+			}
+			fmt.Fprintf(f, "%s\n", strings.Join(test.input, "\n"))
+			f.Close()
+			excludes, err := ParseDockerignore(dir)
+			if err != nil {
+				t.Fatalf("error reading %q: %v", ignorefile, err)
+			}
+			if err := os.Remove(ignorefile); err != nil {
+				t.Fatalf("failed to remove ignore file: %v", err)
+			}
+			if len(excludes) != len(test.result) {
+				t.Errorf("expected to read back %#v, got %#v", test.result, excludes)
+			}
+			for i := range excludes {
+				if excludes[i] != test.result[i] {
+					t.Errorf("expected to read back %#v, got %#v", test.result, excludes)
+				}
+			}
+		}
+	}
+	testIgnore(filepath.Join(dir, ".containerignore"))
+	testIgnore(filepath.Join(dir, ".dockerignore"))
+	// Create empty .dockerignore to test in same directory as .containerignore
+	f, err := os.Create(filepath.Join(dir, ".dockerignore"))
+	if err != nil {
+		t.Fatalf("error creating: %v", err)
+	}
+	f.Close()
+	testIgnore(filepath.Join(dir, ".containerignore"))
+	os.Remove(filepath.Join(dir, ".dockerignore"))
+
+	ignorefile := filepath.Join(dir, "ignore")
 	for _, test := range tests {
-		f, err := os.Create(dockerignore)
+		f, err := os.Create(ignorefile)
 		if err != nil {
-			t.Fatalf("error creating %q: %v", dockerignore, err)
+			t.Fatalf("error creating %q: %v", ignorefile, err)
 		}
 		fmt.Fprintf(f, "%s\n", strings.Join(test.input, "\n"))
 		f.Close()
-		excludes, err := ParseDockerignore(dir)
+		excludes, err := ParseIgnore(ignorefile)
 		if err != nil {
-			t.Fatalf("error reading %q: %v", dockerignore, err)
+			t.Fatalf("error reading %q: %v", ignorefile, err)
+		}
+		if err := os.Remove(ignorefile); err != nil {
+			t.Fatalf("failed to remove ignore file: %v", err)
 		}
 		if len(excludes) != len(test.result) {
 			t.Errorf("expected to read back %#v, got %#v", test.result, excludes)

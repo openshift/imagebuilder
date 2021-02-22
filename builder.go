@@ -563,22 +563,39 @@ var builtinAllowedBuildArgs = map[string]bool{
 	"no_proxy":    true,
 }
 
-// ParseDockerIgnore returns a list of the excludes in the .dockerignore file.
+// ParseIgnore returns a list of the excludes in the specified path
+// path should be a file with the .dockerignore format
 // extracted from fsouza/go-dockerclient and modified to drop comments and
 // empty lines.
-func ParseDockerignore(root string) ([]string, error) {
+func ParseIgnore(path string) ([]string, error) {
 	var excludes []string
-	ignore, err := ioutil.ReadFile(filepath.Join(root, ".dockerignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return excludes, fmt.Errorf("error reading .dockerignore: '%s'", err)
+
+	ignores, err := ioutil.ReadFile(path)
+	if err != nil {
+		return excludes, err
 	}
-	for _, e := range strings.Split(string(ignore), "\n") {
-		if len(e) == 0 || e[0] == '#' {
+	for _, ignore := range strings.Split(string(ignores), "\n") {
+		if len(ignore) == 0 || ignore[0] == '#' {
 			continue
 		}
-		excludes = append(excludes, e)
+		ignore = strings.Trim(ignore, "/")
+		if len(ignore) > 0 {
+			excludes = append(excludes, ignore)
+		}
 	}
 	return excludes, nil
+}
+
+// ParseDockerIgnore returns a list of the excludes in the .containerignore or .dockerignore file.
+func ParseDockerignore(root string) ([]string, error) {
+	excludes, err := ParseIgnore(filepath.Join(root, ".containerignore"))
+	if err != nil && os.IsNotExist(err) {
+		excludes, err = ParseIgnore(filepath.Join(root, ".dockerignore"))
+	}
+	if err != nil && os.IsNotExist(err) {
+		return excludes, nil
+	}
+	return excludes, err
 }
 
 // ExportEnv creates an export statement for a shell that contains all of the
