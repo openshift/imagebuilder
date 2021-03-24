@@ -266,6 +266,10 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/copy",
 		},
 		{
+			Name:       "copy chown",
+			ContextDir: "testdata/copychown",
+		},
+		{
 			Name:       "copy dir",
 			ContextDir: "testdata/copydir",
 		},
