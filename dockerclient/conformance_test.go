@@ -270,6 +270,16 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/copychown",
 		},
 		{
+			Name:       "copy empty 1",
+			ContextDir: "testdata/copyempty",
+			Dockerfile: "Dockerfile",
+		},
+		{
+			Name:       "copy empty 2",
+			ContextDir: "testdata/copyempty",
+			Dockerfile: "Dockerfile2",
+		},
+		{
 			Name:       "copy dir",
 			ContextDir: "testdata/copydir",
 		},

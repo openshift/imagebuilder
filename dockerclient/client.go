@@ -936,6 +936,9 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		}
 		// TODO: reuse source
 		for _, src := range c.Src {
+			if src == "" {
+				src = "*"
+			}
 			klog.V(4).Infof("Archiving %s download=%t fromFS=%t from=%s", src, c.Download, c.FromFS, c.From)
 			var r io.Reader
 			var closer io.Closer
