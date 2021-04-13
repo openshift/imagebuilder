@@ -630,3 +630,33 @@ func TestDispatchAddChmod(t *testing.T) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
 	}
 }
+
+func TestDispatchRunFlags(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--mount=type=bind,target=/foo"}
+	args := []string{"echo \"stuff\""}
+	original := "RUN --mount=type=bind,target=/foo echo \"stuff\""
+
+	if err := run(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingRuns := []Run{
+		{
+			Shell:  true,
+			Args:   args,
+			Mounts: []string{"type=bind,target=/foo"},
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
+
+}
