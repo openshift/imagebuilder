@@ -347,6 +347,11 @@ func TestConformanceInternal(t *testing.T) {
 			Dockerfile: "Dockerfile.addall",
 		},
 		{
+			Name:       "add directories with archives 2",
+			ContextDir: "testdata/add",
+			Dockerfile: "Dockerfile.addslash",
+		},
+		{
 			Name:       "run with JSON",
 			Dockerfile: "testdata/Dockerfile.run.args",
 			Output: []*regexp.Regexp{
@@ -432,8 +437,8 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "13",
-			Dockerfile: "13/Dockerfile",
+			ContextDir: "13/alpine",
+			Dockerfile: "13/alpine/Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{
 				func(a, b *tar.Header) bool {
