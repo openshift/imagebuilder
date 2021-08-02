@@ -99,6 +99,13 @@ return buildErr
 
 Example of usage from OpenShift's experimental `dockerbuild` [command with mount secrets](https://github.com/openshift/origin/blob/26c9e032ff42f613fe10649cd7c5fa1b4c33501b/pkg/cmd/cli/cmd/dockerbuild/dockerbuild.go)
 
+## Update a dependency:
+
+```
+env GO111MODULE=on go get _dependency_[@_newversion_]
+env GO111MODULE=on go mod tidy && env GO111MODULE=on go mod vendor
+```
+
 ## Run conformance tests (very slow):
 
 ```
