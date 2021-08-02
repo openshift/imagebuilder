@@ -1,0 +1,5 @@
+FROM busybox
+RUN touch /a
+FROM busybox
+COPY --from=0 /a /
+RUN ls -al /a

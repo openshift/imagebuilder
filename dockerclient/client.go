@@ -138,14 +138,19 @@ func (e *ClientExecutor) DefaultExcludes() error {
 }
 
 // WithName creates a new child executor that will be used whenever a COPY statement
-// uses --from=NAME.
-func (e *ClientExecutor) WithName(name string) *ClientExecutor {
+// uses --from=NAME or --from=POSITION.
+func (e *ClientExecutor) WithName(name string, position int) *ClientExecutor {
 	if e.Named == nil {
 		e.Named = make(map[string]*ClientExecutor)
 		e.Deferred = append([]func() error{func() error {
 			var errs []error
+			released := make(map[*ClientExecutor]struct{})
 			for _, named := range e.Named {
+				if _, ok := released[named]; ok {
+					continue
+				}
 				errs = append(errs, named.Release()...)
+				released[named] = struct{}{}
 			}
 			if len(errs) > 0 {
 				return fmt.Errorf("%v", errs)
@@ -163,6 +168,7 @@ func (e *ClientExecutor) WithName(name string) *ClientExecutor {
 
 	child := &copied
 	e.Named[name] = child
+	e.Named[strconv.Itoa(position)] = child
 	return child
 }
 
@@ -171,7 +177,7 @@ func (e *ClientExecutor) WithName(name string) *ClientExecutor {
 func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Stages, from string) (*ClientExecutor, error) {
 	var stageExecutor *ClientExecutor
 	for i, stage := range stages {
-		stageExecutor = e.WithName(stage.Name)
+		stageExecutor = e.WithName(stage.Name, stage.Position)
 
 		var stageFrom string
 		if i == 0 {
