@@ -16,6 +16,7 @@ import (
 	"github.com/containers/storage/pkg/archive"
 	"github.com/containers/storage/pkg/fileutils"
 	"github.com/containers/storage/pkg/idtools"
+	"github.com/containers/storage/pkg/ioutils"
 	"k8s.io/klog"
 )
 
@@ -182,9 +183,95 @@ func archiveFromDisk(directory string, src, dst string, allowDownload bool, excl
 		return nil, nil, err
 	}
 
-	klog.V(4).Infof("Tar of %s %#v", directory, options)
-	rc, err := archive.TarWithOptions(directory, options)
-	return rc, rc, err
+	pipeReader, pipeWriter := io.Pipe() // the archive we're creating
+
+	includeFiles := options.IncludeFiles
+	var returnedError error
+	go func() {
+		defer pipeWriter.Close()
+		tw := tar.NewWriter(pipeWriter)
+		defer tw.Close()
+		var nonArchives []string
+		for _, includeFile := range includeFiles {
+			if allowDownload && src != "." && src != "/" && isArchivePath(filepath.Join(directory, includeFile)) {
+				// it's an archive -> copy each item to the
+				// archive being written to the pipe writer
+				klog.V(4).Infof("Extracting %s", includeFile)
+				if err := func() error {
+					f, err := os.Open(filepath.Join(directory, includeFile))
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					dc, err := archive.DecompressStream(f)
+					if err != nil {
+						return err
+					}
+					defer dc.Close()
+					tr := tar.NewReader(dc)
+					hdr, err := tr.Next()
+					for err == nil {
+						if renamed, ok := options.RebaseNames[includeFile]; ok {
+							hdr.Name = strings.TrimSuffix(renamed, includeFile) + hdr.Name
+							if hdr.Typeflag == tar.TypeLink {
+								hdr.Linkname = strings.TrimSuffix(renamed, includeFile) + hdr.Linkname
+							}
+						}
+						tw.WriteHeader(hdr)
+						_, err = io.Copy(tw, tr)
+						if err != nil {
+							break
+						}
+						hdr, err = tr.Next()
+					}
+					if err != nil && err != io.EOF {
+						return err
+					}
+					return nil
+				}(); err != nil {
+					returnedError = err
+					break
+				}
+				continue
+			}
+			nonArchives = append(nonArchives, includeFile)
+		}
+		if len(nonArchives) > 0 && returnedError == nil {
+			// the not-archive items -> add them all to the archive as-is
+			options.IncludeFiles = nonArchives
+			klog.V(4).Infof("Tar of %s %#v", directory, options)
+			rc, err := archive.TarWithOptions(directory, options)
+			if err != nil {
+				returnedError = err
+				return
+			}
+			defer rc.Close()
+			tr := tar.NewReader(rc)
+			hdr, err := tr.Next()
+			for err == nil {
+				tw.WriteHeader(hdr)
+				_, err = io.Copy(tw, tr)
+				if err != nil {
+					break
+				}
+				hdr, err = tr.Next()
+			}
+			if err != nil && err != io.EOF {
+				returnedError = err
+				return
+			}
+		}
+	}()
+
+	// the reader should close the pipe, and also get any error we need to report
+	readWrapper := ioutils.NewReadCloserWrapper(pipeReader, func() error {
+		if err := pipeReader.Close(); err != nil {
+			return err
+		}
+		return returnedError
+	})
+
+	return readWrapper, readWrapper, err
 }
 
 func archiveFromFile(file string, src, dst string, excludes []string, check DirectoryCheck) (io.Reader, io.Closer, error) {
