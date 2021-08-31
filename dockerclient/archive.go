@@ -50,7 +50,7 @@ func FilterArchive(r io.Reader, w io.Writer, fn TransformFileFunc) error {
 		var body io.Reader = tr
 		name := h.Name
 		data, ok, skip, err := fn(h, tr)
-		klog.V(6).Infof("Transform %s -> %s: data=%t ok=%t skip=%t err=%v", name, h.Name, data != nil, ok, skip, err)
+		klog.V(6).Infof("Transform %s(0%o) -> %s: data=%t ok=%t skip=%t err=%v", name, h.Mode, h.Name, data != nil, ok, skip, err)
 		if err != nil {
 			return err
 		}

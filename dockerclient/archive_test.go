@@ -524,7 +524,7 @@ func Test_archiveFromContainer(t *testing.T) {
 				t.Fatal(err)
 			}
 			if filepath.Clean(path) != testCase.path {
-				t.Errorf("unexpected path: %s != %s", filepath.Clean(path), testCase.path)
+				t.Errorf("unexpected path for root of archive: %q != expected value %q", filepath.Clean(path), testCase.path)
 			}
 			tr := tar.NewReader(rc)
 			var found []string

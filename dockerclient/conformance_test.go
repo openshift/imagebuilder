@@ -16,7 +16,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -56,7 +58,11 @@ func TestMount(t *testing.T) {
 	}
 
 	e := NewClientExecutor(c)
-	defer e.Release()
+	defer func() {
+		for _, err := range e.Release() {
+			t.Errorf("%v", err)
+		}
+	}()
 
 	out := &bytes.Buffer{}
 	e.Out, e.ErrOut = out, out
@@ -126,7 +132,11 @@ func TestCopyFrom(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			e := NewClientExecutor(c)
-			defer e.Release()
+			defer func() {
+				for _, err := range e.Release() {
+					t.Errorf("%v", err)
+				}
+			}()
 
 			out := &bytes.Buffer{}
 			e.Out, e.ErrOut = out, out
@@ -171,7 +181,11 @@ func TestShell(t *testing.T) {
 	}
 
 	e := NewClientExecutor(c)
-	defer e.Release()
+	defer func() {
+		for _, err := range e.Release() {
+			t.Errorf("%v", err)
+		}
+	}()
 
 	out := &bytes.Buffer{}
 	e.Out, e.ErrOut = out, out
@@ -207,7 +221,11 @@ func TestMultiStageBase(t *testing.T) {
 	}
 
 	e := NewClientExecutor(c)
-	defer e.Release()
+	defer func() {
+		for _, err := range e.Release() {
+			t.Errorf("%v", err)
+		}
+	}()
 
 	out := &bytes.Buffer{}
 	e.Out, e.ErrOut = out, out
@@ -416,6 +434,30 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "volumeexists",
 			Dockerfile: "testdata/Dockerfile.volumeexists",
 		},
+		{
+			Name:       "multistage 1",
+			ContextDir: "testdata",
+			Dockerfile: "Dockerfile.multistage",
+		},
+		{
+			Name:       "multistage reuse base",
+			ContextDir: "testdata",
+			Dockerfile: "Dockerfile.reusebase",
+		},
+		{
+			Name:       "multistage 2",
+			ContextDir: "testdata/multistage",
+			Dockerfile: "Dockerfile",
+		},
+		{
+			Name:       "multistage copy",
+			ContextDir: "testdata/copyfrom",
+		},
+		{
+			Name:       "multistageconfiginheritance",
+			ContextDir: "testdata/multistage",
+			Dockerfile: "Dockerfile.env",
+		},
 	}
 
 	for i, test := range testCases {
@@ -450,8 +492,8 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "13/alpine",
-			Dockerfile: "13/alpine/Dockerfile",
+			ContextDir: "14/alpine",
+			Dockerfile: "Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{
 				func(a, b *tar.Header) bool {
@@ -488,6 +530,12 @@ func TestTransientMount(t *testing.T) {
 	}
 
 	e := NewClientExecutor(c)
+	defer func() {
+		for _, err := range e.Release() {
+			t.Errorf("%v", err)
+		}
+	}()
+
 	e.AllowPull = true
 	e.Directory = "testdata"
 	e.TransientMounts = []Mount{
@@ -496,7 +544,7 @@ func TestTransientMount(t *testing.T) {
 	}
 	e.Tag = fmt.Sprintf("conformance%d", rand.Int63())
 
-	defer c.RemoveImage(e.Tag)
+	defer e.removeImage(e.Tag)
 
 	out := &bytes.Buffer{}
 	e.Out = out
@@ -574,7 +622,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 
 	dir := tmpDir
 	contextDir := filepath.Join(dir, test.ContextDir)
-	dockerfilePath := filepath.Join(dir, dockerfile)
+	dockerfilePath := filepath.Join(dir, test.ContextDir, dockerfile)
 
 	// clone repo or copy the Dockerfile
 	var input string
@@ -594,24 +642,61 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 				return
 			}
 		}
+		dir = contextDir
 
 	case len(test.ContextDir) > 0:
-		input = filepath.Join(test.ContextDir, dockerfile)
-		dockerfilePath = filepath.Join(test.ContextDir, "Dockerfile")
-		contextDir = test.ContextDir
-		dir = test.ContextDir
-
-		if len(test.Dockerfile) > 0 {
-			dockerfilePath = filepath.Join(dir, test.Dockerfile)
+		hardlinks := new(hardlinkChecker)
+		if err := filepath.Walk(filepath.Join("", test.ContextDir), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			dest := filepath.Join(dir, path)
+			if info.IsDir() {
+				if err := os.MkdirAll(dest, info.Mode()); err != nil {
+					return err
+				}
+				return os.Chtimes(dest, info.ModTime(), info.ModTime())
+			}
+			if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+				linkTarget, err := os.Readlink(path)
+				if err != nil {
+					return err
+				}
+				return os.Symlink(linkTarget, dest)
+			}
+			if info.Mode().IsRegular() {
+				if hardlinkTarget, ok := hardlinks.Check(info, dest); ok {
+					return os.Link(hardlinkTarget, dest)
+				}
+				if _, err := fileutils.CopyFile(path, dest); err != nil {
+					return err
+				}
+				if err := os.Chmod(dest, info.Mode()&os.ModePerm); err != nil {
+					return err
+				}
+				return os.Chtimes(dest, info.ModTime(), info.ModTime())
+			}
+			return fmt.Errorf("%s: %w", dest, syscall.ENOTSUP)
+		}); err != nil {
+			t.Fatal(err)
 		}
 
+		contextDir = filepath.Join(dir, test.ContextDir)
+		dockerfilePath = filepath.Join(contextDir, "Dockerfile")
+		if len(test.Dockerfile) > 0 {
+			dockerfilePath = filepath.Join(contextDir, test.Dockerfile)
+		}
+		dir = contextDir
+		input = dockerfilePath
+
 	default:
-		input = dockerfile
 		dockerfilePath = filepath.Join(dir, "Dockerfile")
+		input = dockerfilePath
 		if _, err := fileutils.CopyFile(filepath.Join("", dockerfile), dockerfilePath); err != nil {
 			t.Fatal(err)
 		}
 		dockerfile = "Dockerfile"
+		dir = contextDir
 	}
 
 	// read the dockerfile
@@ -625,16 +710,15 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 		t.Errorf("%d: can't parse Dockerfile %q: %v", i, input, err)
 		return
 	}
-	from, err := imagebuilder.NewBuilder(nil).From(node)
+	builder := imagebuilder.NewBuilder(nil)
+	stages, err := imagebuilder.NewStages(node, builder)
 	if err != nil {
-		t.Errorf("%d: can't get base FROM %q: %v", i, input, err)
+		t.Errorf("%d: error parsing Dockerfile %q: %v", i, input, err)
 		return
 	}
-	nameFormat := "conformance-dockerbuild-%d-%s-%d"
+	nameFormat := "conformance-dockerbuild-%d-%s-%d-%d"
 
 	var toDelete []string
-	steps := node.Children
-	lastImage := from
 
 	ignoreSmallFileChange := func(a, b *tar.Header) bool {
 		if a == nil || b == nil {
@@ -650,87 +734,148 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 
 	dockerOut := &bytes.Buffer{}
 	imageOut := &bytes.Buffer{}
+	exclude, _ := imagebuilder.ParseDockerignore(contextDir)
 
 	if deep {
-		// execute each step on both Docker build and the direct builder, comparing as we
-		// go
-		fail := false
-		for j := range steps {
-			testFile := dockerfileWithFrom(lastImage, steps[j:j+1])
-
-			nameDirect := fmt.Sprintf(nameFormat, i, "direct", j)
-			nameDocker := fmt.Sprintf(nameFormat, i, "docker", j)
-
-			// run docker build
-			if err := ioutil.WriteFile(dockerfilePath, []byte(testFile), 0600); err != nil {
-				t.Errorf("%d: unable to update Dockerfile %q: %v", i, dockerfilePath, err)
-				break
+		// dockerfileWithFrom returns the contents of a new docker file with a different
+		// FROM as the first line, and any --from= arguments in COPY or ADD instructions
+		// replaced with the names of images that we expect to have created at the end
+		// of the stages that built them
+		dockerfileWithFrom := func(from string, steps []*parser.Node, currentStageIndex int) (string, error) {
+			lines := []string{}
+			lines = append(lines, fmt.Sprintf("FROM %s", from))
+			for _, step := range steps {
+				switch strings.ToUpper(step.Value) {
+				case strings.ToUpper(command.Add), strings.ToUpper(command.Copy):
+					line := strings.ToUpper(step.Value)
+					for _, flag := range step.Flags {
+						// replace --from=stageName|stageNumber with --from=stageFinalImage
+						if strings.HasPrefix(flag, "--from=") {
+							stageLabel := strings.TrimPrefix(flag, "--from=")
+							if b, ok := stages.ByName(stageLabel); ok {
+								otherStage := fmt.Sprintf(nameFormat, i, "docker", b.Position, len(b.Node.Children))
+								flag = "--from=" + otherStage
+							} else if stageIndex, err := strconv.Atoi(stageLabel); err == nil {
+								if stageIndex >= currentStageIndex {
+									return "", fmt.Errorf("%q references not-yet-built stage", step.Original)
+								}
+								b := stages[stageIndex]
+								otherStage := fmt.Sprintf(nameFormat, i, "docker", b.Position, len(b.Node.Children))
+								flag = "--from=" + otherStage
+							}
+						}
+						line = line + " " + flag
+					}
+					next := step.Next
+					for next != nil {
+						line = line + " " + next.Value
+						next = next.Next
+					}
+					lines = append(lines, line)
+				default:
+					lines = append(lines, step.Original)
+				}
 			}
-			in, err := archive.TarWithOptions(dir, &archive.TarOptions{IncludeFiles: []string{"."}})
+			return strings.Join(lines, "\n"), nil
+		}
+
+		// execute each stage on both Docker build and the direct
+		// builder, comparing as we go
+		for j := range stages {
+			// execute thru each step in this stage on both Docker
+			// build and the direct builder, comparing as we go
+			stageBase, err := builder.From(stages[j].Node)
 			if err != nil {
-				t.Errorf("%d: unable to generate build context %q: %v", i, dockerfilePath, err)
-				break
+				t.Fatalf("%d: %v", j, err)
 			}
-			if err := c.BuildImage(docker.BuildImageOptions{
-				Name:                nameDocker,
-				Dockerfile:          dockerfile,
-				RmTmpContainer:      true,
-				ForceRmTmpContainer: true,
-				InputStream:         in,
-				OutputStream:        dockerOut,
-				NoCache:             len(test.Output) > 0,
-			}); err != nil {
+			// if the base is the result of a previous stage,
+			// resolve it to that stage's final image here
+			if b, ok := stages.ByName(stageBase); ok {
+				stageBase = fmt.Sprintf(nameFormat, i, "docker", b.Position, len(b.Node.Children))
+			}
+			steps := stages[j].Node.Children
+			for k := range steps {
+				// construct the Dockerfile
+				testFile, err := dockerfileWithFrom(stageBase, steps[0:k+1], j)
+				if err != nil {
+					t.Fatalf("%d: unable to reconstruct Dockerfile %q: %v", i, dockerfilePath, err)
+				}
+
+				nameDirect := fmt.Sprintf(nameFormat, i, "direct", j, k+1)
+				nameDocker := fmt.Sprintf(nameFormat, i, "docker", j, k+1)
+
+				// run docker build for this stage thru this step
+				if err := ioutil.WriteFile(dockerfilePath, []byte(testFile), 0600); err != nil {
+					t.Fatalf("%d: unable to update Dockerfile %q: %v", i, dockerfilePath, err)
+				}
+				in, err := archive.TarWithOptions(dir, &archive.TarOptions{IncludeFiles: []string{"."}, ExcludePatterns: exclude})
+				if err != nil {
+					t.Fatalf("%d: unable to generate build context %q: %v", i, dockerfilePath, err)
+				}
+				var args []docker.BuildArg
+				for k, v := range test.Args {
+					args = append(args, docker.BuildArg{Name: k, Value: v})
+				}
+				if err := c.BuildImage(docker.BuildImageOptions{
+					Name:                nameDocker,
+					Dockerfile:          dockerfile,
+					RmTmpContainer:      true,
+					ForceRmTmpContainer: true,
+					InputStream:         in,
+					OutputStream:        dockerOut,
+					BuildArgs:           args,
+					NoCache:             len(test.Output) > 0,
+				}); err != nil {
+					in.Close()
+					data, _ := ioutil.ReadFile(dockerfilePath)
+					t.Fatalf("%d: unable to build Docker image %q: %v\n%s\n%s", i, test.Git, err, string(data), dockerOut)
+				}
 				in.Close()
-				data, _ := ioutil.ReadFile(testFile)
-				t.Errorf("%d: unable to build Docker image %q: %v\n%s\n%s", i, test.Git, err, string(data), dockerOut)
-				break
-			}
-			toDelete = append(toDelete, nameDocker)
+				toDelete = append([]string{nameDocker}, toDelete...)
 
-			// run direct build
-			e := NewClientExecutor(c)
-			e.Out, e.ErrOut = imageOut, imageOut
-			e.Directory = contextDir
-			e.Tag = nameDirect
-			b := imagebuilder.NewBuilder(test.Args)
-			node, err := imagebuilder.ParseDockerfile(bytes.NewBufferString(testFile))
-			if err != nil {
-				t.Fatalf("%d: %v", i, err)
-			}
-			if err := e.Build(b, node, ""); err != nil {
-				t.Errorf("%d: failed to build step %d in dockerfile %q: %s\n%s", i, j, dockerfilePath, steps[j].Original, imageOut)
-				break
-			}
-			toDelete = append(toDelete, nameDirect)
+				// run direct build of this stage thru this step
+				e := NewClientExecutor(c)
+				defer func() {
+					for _, err := range e.Release() {
+						t.Errorf("%v", err)
+					}
+				}()
+				e.Out, e.ErrOut = imageOut, imageOut
+				e.Directory = dir
+				e.Tag = nameDirect
+				b := imagebuilder.NewBuilder(test.Args)
+				node, err := imagebuilder.ParseDockerfile(bytes.NewBufferString(testFile))
+				if err != nil {
+					t.Fatalf("%d: %v", i, err)
+				}
+				if err := e.Build(b, node, ""); err != nil {
+					t.Fatalf("%d: failed to build through step %d/%d in dockerfile %q: %s\n%s", i, j, k, dockerfilePath, steps[k].Original, imageOut)
+				}
+				toDelete = append([]string{nameDirect}, toDelete...)
 
-			// only compare filesystem on layers that change the filesystem
-			mutation := steps[j].Value == command.Add || steps[j].Value == command.Copy || steps[j].Value == command.Run
-			// metadata must be strictly equal
-			if !equivalentImages(
-				t, c, nameDocker, nameDirect, mutation,
-				metadataEqual,
-				append(ignoreFuncs{ignoreSmallFileChange}, test.Ignore...)...,
-			) {
-				t.Errorf("%d: layered Docker build was not equivalent to direct layer image metadata %s", i, input)
-				fail = true
+				// only compare filesystem on layers that change the filesystem
+				mutation := steps[k].Value == command.Add || steps[k].Value == command.Copy || steps[k].Value == command.Run
+				// metadata must be strictly equal
+				if !equivalentImages(
+					t, c, nameDocker, nameDirect, mutation,
+					metadataEqual,
+					append(ignoreFuncs{ignoreSmallFileChange}, test.Ignore...)...,
+				) {
+					data, _ := ioutil.ReadFile(dockerfilePath)
+					t.Logf("Dockerfile:\n%s", data)
+					t.Fatalf("%d: layered Docker build was not equivalent to direct layer image metadata %s", i, input)
+				}
 			}
-
-			lastImage = nameDocker
 		}
-
-		if fail {
-			t.Fatalf("%d: Conformance test failed for %s", i, input)
-		}
-
 	} else {
-		exclude, _ := imagebuilder.ParseDockerignore(dir)
-		//exclude = append(filtered, ".dockerignore")
+		// run docker build
 		in, err := archive.TarWithOptions(dir, &archive.TarOptions{IncludeFiles: []string{"."}, ExcludePatterns: exclude})
 		if err != nil {
 			t.Errorf("%d: unable to generate build context %q: %v", i, dockerfilePath, err)
 			return
 		}
-		nameDocker := fmt.Sprintf(nameFormat, i, "docker", 0)
+		stageSteps := stages[len(stages)-1].Node.Children
+		nameDocker := fmt.Sprintf(nameFormat, i, "docker", len(stages)-1, len(stageSteps))
 		var args []docker.BuildArg
 		for k, v := range test.Args {
 			args = append(args, docker.BuildArg{Name: k, Value: v})
@@ -749,27 +894,45 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			t.Errorf("%d: unable to build Docker image %q: %v\n%s", i, test.Git, err, dockerOut)
 			return
 		}
-		lastImage = nameDocker
-		toDelete = append(toDelete, nameDocker)
-	}
+		in.Close()
+		toDelete = append([]string{nameDocker}, toDelete...)
 
-	// if we ran more than one step, compare the squashed output with the docker build output
-	if len(steps) > 1 || !deep {
-		nameDirect := fmt.Sprintf(nameFormat, i, "direct", len(steps)-1)
-		e := NewClientExecutor(c)
-		e.Out, e.ErrOut = imageOut, imageOut
-		e.Directory = contextDir
-		e.Tag = nameDirect
+		// run direct build
 		b := imagebuilder.NewBuilder(test.Args)
 		node, err := imagebuilder.ParseDockerfile(bytes.NewBuffer(data))
 		if err != nil {
 			t.Fatalf("%d: %v", i, err)
 		}
-		if err := e.Build(b, node, ""); err != nil {
+		stages, err := imagebuilder.NewStages(node, b)
+		if err != nil {
+			t.Errorf("%v", err)
+			return
+		}
+		if len(stages) == 0 {
+			t.Error("parsing Dockerfile produced no stages")
+			return
+		}
+		nameDirect := fmt.Sprintf(nameFormat, i, "direct", len(stages)-1, len(stageSteps))
+		e := NewClientExecutor(c)
+		defer func() {
+			for _, err := range e.Release() {
+				t.Errorf("%v", err)
+			}
+		}()
+		e.Out, e.ErrOut = imageOut, imageOut
+		e.Directory = dir
+		e.Tag = nameDirect
+		lastExecutor, err := e.Stages(b, stages, "")
+		if err != nil {
+			t.Errorf("%v", err)
+			return
+		}
+		if err := lastExecutor.Commit(stages[len(stages)-1].Builder); err != nil {
 			t.Errorf("%d: failed to build complete image in %q: %v\n%s", i, input, err, imageOut)
 		} else {
+			toDelete = append([]string{nameDirect}, toDelete...)
 			if !equivalentImages(
-				t, c, lastImage, nameDirect, true,
+				t, c, nameDocker, nameDirect, true,
 				// metadata should be loosely equivalent, but because we squash and because of limitations
 				// in docker commit, there are some differences
 				metadataLayerEquivalent,
@@ -886,7 +1049,7 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 	}
 
 	if !metadataFn(imageA.Config, imageB.Config) {
-		t.Errorf("generated image metadata did not match:\n%#v\n%#v", imageA.Config, imageB.Config)
+		t.Errorf("generated image metadata did not match (%s, %s):\n%#v\n%#v", a, b, imageA.Config, imageB.Config)
 		return false
 	}
 
@@ -902,7 +1065,7 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 				delete(differs, k)
 				continue
 			}
-			t.Errorf("%s %s differs:\n%#v\n%#v", a, k, v[0].Header, v[1].Header)
+			t.Errorf("%s and %s differ at %s:\n%#v\n%#v", a, b, k, v[0].Header, v[1].Header)
 		}
 		for k, v := range onlyA {
 			if ignoreFuncs(ignoreFns).Ignore(v.Header, nil) {
@@ -917,22 +1080,11 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 			}
 		}
 		if len(onlyA)+len(onlyB)+len(differs) > 0 {
-			t.Errorf("a=%v b=%v diff=%v", onlyA, onlyB, differs)
+			t.Errorf("a(%s)=%v b(%s)=%v diff=%v", a, onlyA, b, onlyB, differs)
 			return false
 		}
 	}
 	return true
-}
-
-// dockerfileWithFrom returns the contents of a new docker file with a different
-// FROM as the first line.
-func dockerfileWithFrom(from string, steps []*parser.Node) string {
-	lines := []string{}
-	lines = append(lines, fmt.Sprintf("FROM %s", from))
-	for _, step := range steps {
-		lines = append(lines, step.Original)
-	}
-	return strings.Join(lines, "\n")
 }
 
 // envMap returns a map from a list of environment variables.
@@ -1065,4 +1217,22 @@ func imageFSMetadata(c *docker.Client, name string) (map[string]tarHeader, error
 	}
 	<-ch
 	return result, nil
+}
+
+type hardlinkChecker struct {
+	known map[hardlinkCheckerKey]string
+}
+
+func (h *hardlinkChecker) Check(info os.FileInfo, name string) (string, bool) {
+	if h.known == nil {
+		h.known = make(map[hardlinkCheckerKey]string)
+	}
+	key := h.makeHardlinkCheckerKey(info)
+	if key != nil {
+		if name, ok := h.known[*key]; ok {
+			return name, ok
+		}
+		h.known[*key] = name
+	}
+	return "", false
 }
