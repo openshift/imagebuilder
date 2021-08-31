@@ -100,6 +100,9 @@ type ClientExecutor struct {
 	// as a base for this build. Otherwise the FROM value from the
 	// Dockerfile is read (will be pulled if not locally present).
 	Image *docker.Image
+	// Committed is optional and is used to track a temporary image, if one
+	// was created, that was based on the container as its stage ended.
+	Committed *docker.Image
 
 	// AuthFn will handle authenticating any docker pulls if Image
 	// is set to nil.
@@ -170,6 +173,7 @@ func (e *ClientExecutor) WithName(name string, position int) *ClientExecutor {
 	copied.Deferred = nil
 	copied.Image = nil
 	copied.Volumes = nil
+	copied.Committed = nil
 
 	child := &copied
 	e.Named[name] = child
@@ -197,11 +201,34 @@ func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Sta
 				if !ok {
 					return nil, fmt.Errorf("error: Unable to find stage %s builder", from)
 				}
-				stageExecutor.Image = &docker.Image{
-					Config: b.Builder.Config(),
+				if prereq.Committed == nil {
+					config := b.Builder.Config()
+					if prereq.Container.State.Running {
+						klog.V(4).Infof("Stopping container %s ...", prereq.Container.ID)
+						if err := e.Client.StopContainer(prereq.Container.ID, 0); err != nil {
+							return nil, fmt.Errorf("unable to stop build container: %v", err)
+						}
+						prereq.Container.State.Running = false
+						// Starting the container may perform escaping of args, so to be consistent
+						// we also set that here
+						config.ArgsEscaped = true
+					}
+					image, err := e.Client.CommitContainer(docker.CommitContainerOptions{
+						Container: prereq.Container.ID,
+						Run:       config,
+					})
+					if err != nil {
+						return nil, fmt.Errorf("unable to commit stage %s container: %v", from, err)
+					}
+					klog.V(4).Infof("Committed %s to %s as basis for image %q: %#v", prereq.Container.ID, image.ID, from, config)
+					// deleting this image will fail with an "image has dependent child images" error
+					// if it ends up being an ancestor of the final image, so don't bother returning
+					// errors from this specific RemoveImage() call
+					prereq.Deferred = append([]func() error{func() error { e.Client.RemoveImage(image.ID); return nil }}, prereq.Deferred...)
+					prereq.Committed = image
 				}
-				stageExecutor.Container = prereq.Container
-				klog.V(4).Infof("Using previous stage %s as image: %#v", from, stageExecutor.Image.Config)
+				klog.V(4).Infof("Using image %s based on previous stage %s as image", prereq.Committed.ID, from)
+				from = prereq.Committed.ID
 			}
 			stageFrom = from
 		}
@@ -224,7 +251,7 @@ func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Sta
 // provided Docker client. It will load the image if not specified,
 // create a container if one does not already exist, and start a
 // container if the Dockerfile contains RUN commands. It will cleanup
-// any containers it creates directly, and set the e.Image.ID field
+// any containers it creates directly, and set the e.Committed.ID field
 // to the generated image.
 func (e *ClientExecutor) Build(b *imagebuilder.Builder, node *parser.Node, from string) error {
 	defer e.Release()
@@ -437,7 +464,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 		return fmt.Errorf("unable to commit build container: %v", err)
 	}
 
-	e.Image = image
+	e.Committed = image
 	klog.V(4).Infof("Committed %s to %s", e.Container.ID, image.ID)
 
 	if len(e.Tag) > 0 {
