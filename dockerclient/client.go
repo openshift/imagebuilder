@@ -223,8 +223,8 @@ func (e *ClientExecutor) Stages(b *imagebuilder.Builder, stages imagebuilder.Sta
 					klog.V(4).Infof("Committed %s to %s as basis for image %q: %#v", prereq.Container.ID, image.ID, from, config)
 					// deleting this image will fail with an "image has dependent child images" error
 					// if it ends up being an ancestor of the final image, so don't bother returning
-					// errors from this specific RemoveImage() call
-					prereq.Deferred = append([]func() error{func() error { e.Client.RemoveImage(image.ID); return nil }}, prereq.Deferred...)
+					// errors from this specific removeImage() call
+					prereq.Deferred = append([]func() error{func() error { e.removeImage(image.ID); return nil }}, prereq.Deferred...)
 					prereq.Committed = image
 				}
 				klog.V(4).Infof("Using image %s based on previous stage %s as image", prereq.Committed.ID, from)
@@ -285,7 +285,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			if err != nil {
 				return fmt.Errorf("unable to create a scratch image for this build: %v", err)
 			}
-			e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImage(from) })
+			e.Deferred = append(e.Deferred, func() error { return e.removeImage(from) })
 		}
 		klog.V(4).Infof("Retrieving image %q", from)
 		e.Image, err = e.LoadImage(from)
@@ -475,7 +475,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 				Tag:  tag,
 			})
 			if err != nil {
-				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImageExtended(image.ID, docker.RemoveImageOptions{Force: true}) })
+				e.Deferred = append(e.Deferred, func() error { return e.removeImage(image.ID) })
 				return fmt.Errorf("unable to tag %q: %v", s, err)
 			}
 			e.LogFn("Tagged as %s", s)
@@ -536,7 +536,17 @@ func (e *ClientExecutor) removeContainer(id string) error {
 		Force:         true,
 	})
 	if _, ok := err.(*docker.NoSuchContainer); err != nil && !ok {
-		return fmt.Errorf("unable to cleanup container: %v", err)
+		return fmt.Errorf("unable to cleanup container %s: %v", id, err)
+	}
+	return nil
+}
+
+// removeImage removes the provided image ID
+func (e *ClientExecutor) removeImage(id string) error {
+	if err := e.Client.RemoveImageExtended(id, docker.RemoveImageOptions{
+		Force: true,
+	}); err != nil {
+		return fmt.Errorf("unable to clean up image %s: %v", id, err)
 	}
 	return nil
 }
