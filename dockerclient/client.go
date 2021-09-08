@@ -113,7 +113,7 @@ type ClientExecutor struct {
 	LogFn func(format string, args ...interface{})
 
 	// Deferred is a list of operations that must be cleaned up at
-	// the end of execution. Use Release() to handle these.
+	// the end of execution. Use Release() to invoke all of these.
 	Deferred []func() error
 
 	// Volumes handles saving and restoring volumes after RUN
@@ -150,22 +150,18 @@ func (e *ClientExecutor) DefaultExcludes() error {
 func (e *ClientExecutor) WithName(name string, position int) *ClientExecutor {
 	if e.Named == nil {
 		e.Named = make(map[string]*ClientExecutor)
-		e.Deferred = append([]func() error{func() error {
-			var errs []error
-			released := make(map[*ClientExecutor]struct{})
-			for _, named := range e.Named {
-				if _, ok := released[named]; ok {
-					continue
-				}
-				errs = append(errs, named.Release()...)
-				released[named] = struct{}{}
-			}
-			if len(errs) > 0 {
-				return fmt.Errorf("%v", errs)
-			}
-			return nil
-		}}, e.Deferred...)
 	}
+	e.Deferred = append([]func() error{func() error {
+		stage, ok := e.Named[strconv.Itoa(position)]
+		if !ok {
+			return fmt.Errorf("error finding stage %d", position)
+		}
+		errs := stage.Release()
+		if len(errs) > 0 {
+			return fmt.Errorf("%v", errs)
+		}
+		return nil
+	}}, e.Deferred...)
 
 	copied := *e
 	copied.Name = name
@@ -285,7 +281,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			if err != nil {
 				return fmt.Errorf("unable to create a scratch image for this build: %v", err)
 			}
-			e.Deferred = append(e.Deferred, func() error { return e.removeImage(from) })
+			e.Deferred = append([]func() error{func() error { return e.removeImage(from) }}, e.Deferred...)
 		}
 		klog.V(4).Infof("Retrieving image %q", from)
 		e.Image, err = e.LoadImage(from)
@@ -342,7 +338,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 				if err != nil {
 					return fmt.Errorf("unable to create volume to mount secrets: %v", err)
 				}
-				e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveVolume(volumeName) })
+				e.Deferred = append([]func() error{func() error { return e.Client.RemoveVolume(volumeName) }}, e.Deferred...)
 				sharedMount = v.Mountpoint
 				opts.HostConfig.Binds = append(opts.HostConfig.Binds, volumeName+":"+e.ContainerTransientMount)
 			}
@@ -475,7 +471,7 @@ func (e *ClientExecutor) Commit(b *imagebuilder.Builder) error {
 				Tag:  tag,
 			})
 			if err != nil {
-				e.Deferred = append(e.Deferred, func() error { return e.removeImage(image.ID) })
+				e.Deferred = append([]func() error{func() error { return e.removeImage(image.ID) }}, e.Deferred...)
 				return fmt.Errorf("unable to tag %q: %v", s, err)
 			}
 			e.LogFn("Tagged as %s", s)
