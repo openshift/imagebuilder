@@ -108,6 +108,7 @@ func TestCopyFrom(t *testing.T) {
 		{name: "copy folder with dot contents to higher level", create: "mkdir -p /a/b && touch /a/b/1 /a/b/2", copy: "/a/b/. /b/", expect: "ls -al /b/1 /b/2 /b && ! ls -al /a /b/a /b/b"},
 		{name: "copy root file to different root name", create: "touch /b", copy: "/b /a", expect: "ls -al /a && ! ls -al /b"},
 		{name: "copy nested file to different root name", create: "mkdir -p /a && touch /a/b", copy: "/a/b /a", expect: "ls -al /a && ! ls -al /b"},
+		{name: "copy hard links to excluded file", create: "mkdir -p /a/b/c && touch /a/b/c/d && ln /a/b/c/d /a/b/d && ln /a/b/c/d /a/b/e", extra: "RUN mkdir -p /f/g", copy: "/a/b/d /a/b/e /f/g/", expect: "ls -al /f && ls -al /f/g && ls -al /f/g/d /f/g/e"},
 		{name: "copy file to deeper directory with explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c/", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},
 		{name: "copy file to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a/1 /a/b/c", expect: "ls -al /a/b/c && ! ls -al /a/b/1"},
 		{name: "copy directory to deeper directory without explicit slash", create: "mkdir -p /a && touch /a/1", copy: "/a /a/b/c", expect: "ls -al /a/b/c/1 && ! ls -al /a/b/1"},

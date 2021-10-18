@@ -487,6 +487,10 @@ func Test_archiveFromContainer(t *testing.T) {
 				testCase.dst,
 				testCase.excludes,
 				testDirectoryCheck(testCase.check),
+				func(pw *io.PipeWriter) {
+					_, err := io.Copy(pw, testCase.gen.Reader())
+					pw.CloseWithError(err)
+				},
 			)
 			if err != nil {
 				t.Fatal(err)

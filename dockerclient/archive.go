@@ -25,6 +25,11 @@ var isArchivePath = archive.IsArchivePath
 // TransformFileFunc is given a chance to transform an arbitrary input file.
 type TransformFileFunc func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error)
 
+// FetchArchiveFunc retrieves an entire second copy of the archive we're
+// processing, so that we can fetch something from it that we discarded
+// earlier.  This is expensive, so it is only called when it's needed.
+type FetchArchiveFunc func(pw *io.PipeWriter)
+
 // FilterArchive transforms the provided input archive to a new archive,
 // giving the fn a chance to transform arbitrary files.
 func FilterArchive(r io.Reader, w io.Writer, fn TransformFileFunc) error {
@@ -283,7 +288,24 @@ func archiveFromFile(file string, src, dst string, excludes []string, check Dire
 		}
 	}
 
-	mapper, _, err := newArchiveMapper(src, dst, excludes, true, check)
+	refetch := func(pw *io.PipeWriter) {
+		f, err := os.Open(file)
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		defer f.Close()
+		dc, err := archive.DecompressStream(f)
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		defer dc.Close()
+		_, err = io.Copy(pw, dc)
+		pw.CloseWithError(err)
+	}
+
+	mapper, _, err := newArchiveMapper(src, dst, excludes, true, check, refetch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -304,8 +326,8 @@ func archiveFromFile(file string, src, dst string, excludes []string, check Dire
 	return r, cc, err
 }
 
-func archiveFromContainer(in io.Reader, src, dst string, excludes []string, check DirectoryCheck) (io.ReadCloser, string, error) {
-	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, false, check)
+func archiveFromContainer(in io.Reader, src, dst string, excludes []string, check DirectoryCheck, refetch FetchArchiveFunc) (io.ReadCloser, string, error) {
+	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, false, check, refetch)
 	if err != nil {
 		return nil, "", err
 	}
@@ -420,9 +442,11 @@ type archiveMapper struct {
 	prefix      string
 	resetOwners bool
 	foundItems  bool
+	refetch     FetchArchiveFunc
+	renameLinks map[string]string
 }
 
-func newArchiveMapper(src, dst string, excludes []string, resetOwners bool, check DirectoryCheck) (*archiveMapper, string, error) {
+func newArchiveMapper(src, dst string, excludes []string, resetOwners bool, check DirectoryCheck, refetch FetchArchiveFunc) (*archiveMapper, string, error) {
 	ex, err := fileutils.NewPatternMatcher(excludes)
 	if err != nil {
 		return nil, "", err
@@ -471,6 +495,8 @@ func newArchiveMapper(src, dst string, excludes []string, resetOwners bool, chec
 		rename:      mapperFn,
 		prefix:      prefix,
 		resetOwners: resetOwners,
+		refetch:     refetch,
+		renameLinks: make(map[string]string),
 	}, archiveRoot, nil
 }
 
@@ -505,21 +531,77 @@ func (m *archiveMapper) Filter(h *tar.Header, r io.Reader) ([]byte, bool, bool, 
 	h.Name = newName
 
 	if h.Typeflag == tar.TypeLink {
-		// run the link target name through the same mapping the Name
-		// in the target's entry would have gotten
-		linkName := strings.TrimPrefix(h.Linkname, "/")
-		if !strings.HasPrefix(linkName, m.prefix) {
-			klog.V(6).Infof("No prefix %q in link target %q", m.prefix, h.Linkname)
-			return nil, false, true, nil
+		if newTarget, ok := m.renameLinks[h.Linkname]; ok {
+			// we already replaced the original link target, so make this a link to the file we copied
+			klog.V(6).Infof("Replaced link target %s -> %s: ok=%t", h.Linkname, newTarget, ok)
+			h.Linkname = newTarget
+		} else {
+			needReplacement := false
+			// run the link target name through the same mapping the Name
+			// in the target's entry would have gotten
+			linkName := strings.TrimPrefix(h.Linkname, "/")
+			if !strings.HasPrefix(linkName, m.prefix) {
+				// the link target didn't start with the prefix, so it wasn't passed along
+				needReplacement = true
+			}
+			var newTarget string
+			if !needReplacement {
+				linkName = strings.TrimPrefix(strings.TrimPrefix(linkName, m.prefix), "/")
+				var ok bool
+				if newTarget, ok = m.rename(linkName, false); !ok || newTarget == "." {
+					// the link target wasn't passed along
+					needReplacement = true
+				}
+			}
+			if !needReplacement {
+				if ok, _ := m.exclude.Matches(linkName); ok {
+					// link target was skipped based on excludes
+					needReplacement = true
+				}
+			}
+			if !needReplacement {
+				// the link target was passed along, everything's fine
+				klog.V(6).Infof("Transform link target %s -> %s: ok=%t skip=%t", h.Linkname, newTarget, ok, true)
+				h.Linkname = newTarget
+			} else {
+				// the link target wasn't passed along, splice it back in as this file
+				if m.refetch == nil {
+					return nil, false, true, fmt.Errorf("need to create %q as a hard link to %q, but did not copy %q", h.Name, h.Linkname, h.Linkname)
+				}
+				pr, pw := io.Pipe()
+				go m.refetch(pw)
+				tr2 := tar.NewReader(pr)
+				rehdr, err := tr2.Next()
+				for err == nil && rehdr.Name != h.Linkname {
+					rehdr, err = tr2.Next()
+				}
+				if err != nil {
+					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching %q: %v", h.Name, h.Linkname, h.Linkname, err)
+					pr.Close()
+				}
+				buf, err := ioutil.ReadAll(pr)
+				pr.Close()
+				if err != nil {
+					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching contents of %q: %v", h.Name, h.Linkname, h.Linkname, err)
+				}
+				m.renameLinks[h.Linkname] = h.Name
+				h.Typeflag = tar.TypeReg
+				h.Size, h.Mode = rehdr.Size, rehdr.Mode
+				h.Uid, h.Gid = rehdr.Uid, rehdr.Gid
+				h.Uname, h.Gname = rehdr.Uname, rehdr.Gname
+				h.ModTime, h.AccessTime, h.ChangeTime = rehdr.ModTime, rehdr.AccessTime, rehdr.ChangeTime
+				h.Xattrs = nil
+				for k, v := range rehdr.Xattrs {
+					if h.Xattrs != nil {
+						h.Xattrs = make(map[string]string)
+					}
+					h.Xattrs[k] = v
+				}
+				klog.V(6).Infof("Transform link %s -> reg %s", h.Linkname, h.Name)
+				h.Linkname = ""
+				return buf, true, false, nil
+			}
 		}
-		linkName = strings.TrimPrefix(strings.TrimPrefix(linkName, m.prefix), "/")
-		newTarget, ok := m.rename(linkName, false)
-		if !ok {
-			klog.V(6).Infof("Transform link target %s -> %s: ok=%t skip=%t", h.Linkname, newTarget, ok, true)
-			return nil, false, true, nil
-		}
-		klog.V(6).Infof("Transform link target %s -> %s: ok=%t", h.Linkname, newTarget, ok)
-		h.Linkname = newTarget
 	}
 
 	// include all files

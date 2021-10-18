@@ -1032,7 +1032,16 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 
 	check := newDirectoryCheck(e.Client, e.Container.ID)
 	pr, pw := io.Pipe()
-	ar, archiveRoot, err := archiveFromContainer(pr, src, dst, nil, check)
+	var archiveRoot string
+	fetch := func(pw *io.PipeWriter) {
+		klog.V(6).Infof("Download from container %s at path %s", containerID, archiveRoot)
+		err := e.Client.DownloadFromContainer(containerID, docker.DownloadFromContainerOptions{
+			OutputStream: pw,
+			Path:         archiveRoot,
+		})
+		pw.CloseWithError(err)
+	}
+	ar, archiveRoot, err := archiveFromContainer(pr, src, dst, nil, check, fetch)
 	if err != nil {
 		pr.Close()
 		pw.Close()
@@ -1046,14 +1055,7 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 		}
 		return err2
 	})
-	go func() {
-		klog.V(6).Infof("Download from container %s at path %s", containerID, archiveRoot)
-		err := e.Client.DownloadFromContainer(containerID, docker.DownloadFromContainerOptions{
-			OutputStream: pw,
-			Path:         archiveRoot,
-		})
-		pw.CloseWithError(err)
-	}()
+	go fetch(pw)
 	return &readCloser{Reader: ar, Closer: closer}, pr, nil
 }
 
