@@ -257,6 +257,10 @@ func TestMultiStageBase(t *testing.T) {
 // TODO: ensure that the final built image has the right UIDs
 //
 func TestConformanceInternal(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	testCases := []conformanceTest{
 		{
 			Name:       "directory",
@@ -379,6 +383,14 @@ func TestConformanceInternal(t *testing.T) {
 		{
 			Name:       "wildcard",
 			ContextDir: "testdata/wildcard",
+		},
+		{
+			Name:       "wildcard leading path",
+			ContextDir: "./testdata/wildcard",
+		},
+		{
+			Name:       "wildcard absolute path",
+			ContextDir: filepath.Join(pwd, "testdata", "wildcard"),
 		},
 		{
 			Name:       "volume",
