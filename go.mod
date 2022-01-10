@@ -6,6 +6,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/containerd/containerd v1.3.0
 	github.com/containers/storage v0.0.0-20181207174215-bf48aa83089d
+	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20170829193243-b68221c37ee5
 	github.com/docker/go-connections v0.4.1-0.20180821093606-97c2040d34df // indirect
 	github.com/docker/go-units v0.3.4-0.20181030082039-2fb04c6466a5 // indirect
@@ -20,7 +21,7 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc6.0.20190305074555-923a8f8a9a07 // indirect
 	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 	github.com/pquerna/ffjson v0.0.0-20171002144729-d49c2bc1aa13 // indirect
-	github.com/sirupsen/logrus v1.3.1-0.20190306131408-d7b6bf5e4d26 // indirect
+	github.com/sirupsen/logrus v1.3.1-0.20190306131408-d7b6bf5e4d26
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc // indirect
 	golang.org/x/net v0.0.0-20190107210223-45ffb0cd1ba0 // indirect
