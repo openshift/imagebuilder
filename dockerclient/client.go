@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -131,6 +132,9 @@ func NewClientExecutor(client *docker.Client) *ClientExecutor {
 	}
 }
 
+// DefaultExcludes reads the default list of excluded file patterns from the
+// context directory's .containerignore file if it exists, or from the context
+// directory's .dockerignore file, if it exists.
 func (e *ClientExecutor) DefaultExcludes() error {
 	var err error
 	e.Excludes, err = imagebuilder.ParseDockerignore(e.Directory)
@@ -638,6 +642,10 @@ func (e *ClientExecutor) Preserve(path string) error {
 }
 
 func (e *ClientExecutor) EnsureContainerPath(path string) error {
+	return e.createOrReplaceContainerPathWithOwner(path, 0, 0)
+}
+
+func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid, gid int) error {
 	createPath := func(dest string) error {
 		var writerErr error
 		if !strings.HasSuffix(dest, "/") {
@@ -657,6 +665,8 @@ func (e *ClientExecutor) EnsureContainerPath(path string) error {
 				Name:     dest,
 				Typeflag: tar.TypeDir,
 				Mode:     0755,
+				Uid:      uid,
+				Gid:      gid,
 			})
 		}()
 		klog.V(4).Infof("Uploading empty archive to %q", dest)
@@ -872,6 +882,20 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		}
 		return *value, nil
 	}
+	findMissingParents := func(dest string) (parents []string, err error) {
+		destParent := filepath.Clean(dest)
+		for filepath.Dir(destParent) != destParent {
+			exists, err := isContainerPathDirectory(e.Client, container.ID, destParent)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				parents = append(parents, destParent)
+			}
+			destParent = filepath.Dir(destParent)
+		}
+		return parents, nil
+	}
 	for _, c := range copies {
 		chownUid, chownGid = -1, -1
 		if c.Chown != "" {
@@ -962,12 +986,25 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 			}
 			asOwner := ""
 			if c.Chown != "" {
+				asOwner = fmt.Sprintf(" as %d:%d", chownUid, chownGid)
+				missingParents, err := findMissingParents(c.Dest)
+				if err != nil {
+					return err
+				}
+				if len(missingParents) > 0 {
+					sort.Strings(missingParents)
+					klog.V(5).Infof("Uploading directories %v to %s%s", missingParents, container.ID, asOwner)
+					for _, missingParent := range missingParents {
+						if err := e.createOrReplaceContainerPathWithOwner(missingParent, chownUid, chownGid); err != nil {
+							return err
+						}
+					}
+				}
 				filtered, err := transformArchive(r, false, chown)
 				if err != nil {
 					return err
 				}
 				r = filtered
-				asOwner = fmt.Sprintf(" as %d:%d", chownUid, chownGid)
 			}
 			klog.V(5).Infof("Uploading to %s%s at %s", container.ID, asOwner, c.Dest)
 			if klog.V(6) {
