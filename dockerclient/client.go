@@ -116,7 +116,7 @@ type ClientExecutor struct {
 	Volumes *ContainerVolumeTracker
 }
 
-// NotAuthFn can be used for AuthFn when no authentication is required in Docker.
+// NoAuthFn can be used for AuthFn when no authentication is required in Docker.
 func NoAuthFn(string) ([]dockertypes.AuthConfig, bool) {
 	return nil, false
 }
@@ -807,6 +807,9 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		}
 		if chownGid != -1 {
 			h.Gid = chownGid
+		}
+		if err := forceHeaderFormat(h); err != nil {
+			return nil, false, false, nil
 		}
 		return nil, false, false, nil
 	}

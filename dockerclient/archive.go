@@ -576,8 +576,8 @@ func (m *archiveMapper) Filter(h *tar.Header, r io.Reader) ([]byte, bool, bool, 
 					rehdr, err = tr2.Next()
 				}
 				if err != nil {
-					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching %q: %v", h.Name, h.Linkname, h.Linkname, err)
 					pr.Close()
+					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching %q: %v", h.Name, h.Linkname, h.Linkname, err)
 				}
 				buf, err := ioutil.ReadAll(pr)
 				pr.Close()
