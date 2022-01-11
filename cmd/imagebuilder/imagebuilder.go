@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/klog"
@@ -87,7 +88,58 @@ func main() {
 	options.TransientMounts = mounts
 
 	options.Out, options.ErrOut = os.Stdout, os.Stderr
+	authConfigurations, err := docker.NewAuthConfigurationsFromDockerCfg()
+	if err != nil {
+		log.Fatalf("reading authentication configurations: %v", err)
+	}
+	if authConfigurations == nil {
+		klog.V(4).Infof("No authentication secrets found")
+	}
+
 	options.AuthFn = func(name string) ([]dockertypes.AuthConfig, bool) {
+		if authConfigurations != nil {
+			if authConfig, ok := authConfigurations.Configs[name]; ok {
+				klog.V(4).Infof("Found authentication secret for registry %q", name)
+				return []dockertypes.AuthConfig{{
+					Username:      authConfig.Username,
+					Password:      authConfig.Password,
+					Email:         authConfig.Email,
+					ServerAddress: authConfig.ServerAddress,
+				}}, true
+			}
+			if named, err := reference.ParseNormalizedNamed(name); err == nil {
+				domain := reference.Domain(named)
+				if authConfig, ok := authConfigurations.Configs[domain]; ok {
+					klog.V(4).Infof("Found authentication secret for registry %q", domain)
+					return []dockertypes.AuthConfig{{
+						Username:      authConfig.Username,
+						Password:      authConfig.Password,
+						Email:         authConfig.Email,
+						ServerAddress: authConfig.ServerAddress,
+					}}, true
+				}
+				if domain == "docker.io" || strings.HasSuffix(domain, ".docker.io") {
+					var auths []dockertypes.AuthConfig
+					for _, aka := range []string{"docker.io", "index.docker.io", "https://index.docker.io/v1/"} {
+						if aka == domain {
+							continue
+						}
+						if authConfig, ok := authConfigurations.Configs[aka]; ok {
+							klog.V(4).Infof("Found authentication secret for registry %q", aka)
+							auths = append(auths, dockertypes.AuthConfig{
+								Username:      authConfig.Username,
+								Password:      authConfig.Password,
+								Email:         authConfig.Email,
+								ServerAddress: authConfig.ServerAddress,
+							})
+						}
+					}
+					if len(auths) > 0 {
+						return auths, true
+					}
+				}
+			}
+		}
 		return nil, false
 	}
 	options.LogFn = func(format string, args ...interface{}) {
