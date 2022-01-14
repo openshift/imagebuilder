@@ -37,8 +37,33 @@ func newArchiveGenerator() *archiveGenerator {
 	return &archiveGenerator{}
 }
 
+func typeflagAsString(b byte) string {
+	switch b {
+	case tar.TypeDir:
+		return "dir"
+	case tar.TypeReg:
+		return "reg"
+	case tar.TypeRegA:
+		return "rega"
+	default:
+		return fmt.Sprintf("%d", b)
+	}
+}
+
+func (g *archiveGenerator) String() string {
+	s := "["
+	for i := range g.Headers {
+		if i > 0 {
+			s += ", "
+		}
+		s += fmt.Sprintf("{%q: %v}", g.Headers[i].Name, typeflagAsString(g.Headers[i].Typeflag))
+	}
+	s += "]"
+	return s
+}
+
 func (g *archiveGenerator) File(name string) *archiveGenerator {
-	g.Headers = append(g.Headers, &tar.Header{Name: name, Size: 1})
+	g.Headers = append(g.Headers, &tar.Header{Name: name, Typeflag: tar.TypeReg, Size: 1})
 	return g
 }
 
@@ -313,10 +338,11 @@ func Test_archiveFromContainer(t *testing.T) {
 		check    map[string]bool
 	}{
 		{
-			gen:  newArchiveGenerator().File("file").Dir("test").File("test/file2"),
-			src:  "/*",
-			dst:  "test",
-			path: "/",
+			gen:   newArchiveGenerator().File("file").Dir("test").File("test/file2"),
+			src:   "/*",
+			dst:   "test",
+			check: map[string]bool{"test": true},
+			path:  "/",
 			expect: []string{
 				"test/file",
 				"test/test",
@@ -390,10 +416,11 @@ func Test_archiveFromContainer(t *testing.T) {
 			},
 		},
 		{
-			gen:  newArchiveGenerator().File("/b/file").Dir("/b/test").File("/b/test/file2"),
-			src:  "/a/b/*",
-			dst:  "/b",
-			path: "/a/b",
+			gen:   newArchiveGenerator().File("/b/file").Dir("/b/test").File("/b/test/file2"),
+			src:   "/a/b/*",
+			dst:   "/b",
+			check: map[string]bool{"/b": true},
+			path:  "/a/b",
 			expect: []string{
 				"/b/file",
 				"/b/test",
@@ -491,6 +518,7 @@ func Test_archiveFromContainer(t *testing.T) {
 					_, err := io.Copy(pw, testCase.gen.Reader())
 					pw.CloseWithError(err)
 				},
+				false,
 			)
 			if err != nil {
 				t.Fatal(err)
@@ -516,7 +544,7 @@ func Test_archiveFromContainer(t *testing.T) {
 			}
 			sort.Strings(found)
 			if !reflect.DeepEqual(testCase.expect, found) {
-				t.Errorf("unexpected files:\n%v\n%v", testCase.expect, found)
+				t.Errorf("from %q to %q with content: %v\nunexpected files:\nexpected: %v\nfound:    %v", testCase.src, testCase.dst, testCase.gen, testCase.expect, found)
 			}
 		})
 	}
