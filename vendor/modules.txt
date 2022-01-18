@@ -1,105 +1,205 @@
-# github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
-github.com/Azure/go-ansiterm/winterm
+# github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1
 github.com/Azure/go-ansiterm
-# github.com/Microsoft/go-winio v0.4.12
+github.com/Azure/go-ansiterm/winterm
+# github.com/Microsoft/go-winio v0.5.1
 github.com/Microsoft/go-winio
-# github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5
-github.com/Nvveen/Gotty
-# github.com/containerd/containerd v1.3.0
-github.com/containerd/containerd/platforms
+github.com/Microsoft/go-winio/pkg/guid
+github.com/Microsoft/go-winio/pkg/security
+github.com/Microsoft/go-winio/vhd
+# github.com/Microsoft/hcsshim v0.8.23
+github.com/Microsoft/hcsshim
+github.com/Microsoft/hcsshim/computestorage
+github.com/Microsoft/hcsshim/internal/cow
+github.com/Microsoft/hcsshim/internal/hcs
+github.com/Microsoft/hcsshim/internal/hcs/schema1
+github.com/Microsoft/hcsshim/internal/hcs/schema2
+github.com/Microsoft/hcsshim/internal/hcserror
+github.com/Microsoft/hcsshim/internal/hns
+github.com/Microsoft/hcsshim/internal/interop
+github.com/Microsoft/hcsshim/internal/log
+github.com/Microsoft/hcsshim/internal/logfields
+github.com/Microsoft/hcsshim/internal/longpath
+github.com/Microsoft/hcsshim/internal/mergemaps
+github.com/Microsoft/hcsshim/internal/oc
+github.com/Microsoft/hcsshim/internal/safefile
+github.com/Microsoft/hcsshim/internal/timeout
+github.com/Microsoft/hcsshim/internal/vmcompute
+github.com/Microsoft/hcsshim/internal/wclayer
+github.com/Microsoft/hcsshim/internal/winapi
+github.com/Microsoft/hcsshim/osversion
+# github.com/containerd/cgroups v1.0.1
+github.com/containerd/cgroups/stats/v1
+# github.com/containerd/containerd v1.5.9
+## explicit
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
-# github.com/containers/storage v0.0.0-20181207174215-bf48aa83089d
+github.com/containerd/containerd/pkg/userns
+github.com/containerd/containerd/platforms
+github.com/containerd/containerd/sys
+# github.com/containers/storage v1.37.0
+## explicit
 github.com/containers/storage/pkg/archive
 github.com/containers/storage/pkg/fileutils
 github.com/containers/storage/pkg/idtools
 github.com/containers/storage/pkg/ioutils
 github.com/containers/storage/pkg/longpath
+github.com/containers/storage/pkg/mount
 github.com/containers/storage/pkg/pools
 github.com/containers/storage/pkg/promise
+github.com/containers/storage/pkg/reexec
 github.com/containers/storage/pkg/system
-github.com/containers/storage/pkg/mount
+github.com/containers/storage/pkg/unshare
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/distribution v2.7.1+incompatible
-github.com/docker/distribution/reference
+## explicit
 github.com/docker/distribution/digestset
-# github.com/docker/docker v1.4.2-0.20170829193243-b68221c37ee5
+github.com/docker/distribution/reference
+# github.com/docker/docker v20.10.12+incompatible
+## explicit
 github.com/docker/docker/api/types
-github.com/docker/docker/pkg/system
-github.com/docker/docker/api/types/registry
-github.com/docker/docker/api/types/swarm
-github.com/docker/docker/opts
-github.com/docker/docker/pkg/fileutils
-github.com/docker/docker/pkg/homedir
-github.com/docker/docker/pkg/stdcopy
+github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/container
 github.com/docker/docker/api/types/filters
 github.com/docker/docker/api/types/mount
 github.com/docker/docker/api/types/network
-github.com/docker/docker/pkg/archive
-github.com/docker/docker/pkg/mount
+github.com/docker/docker/api/types/registry
+github.com/docker/docker/api/types/strslice
+github.com/docker/docker/api/types/swarm
 github.com/docker/docker/api/types/swarm/runtime
+github.com/docker/docker/api/types/versions
+github.com/docker/docker/pkg/archive
+github.com/docker/docker/pkg/fileutils
+github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/idtools
+github.com/docker/docker/pkg/ioutils
+github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/longpath
 github.com/docker/docker/pkg/pools
-github.com/docker/docker/api/types/blkiodev
-github.com/docker/docker/api/types/strslice
-github.com/docker/docker/api/types/versions
-github.com/docker/docker/pkg/ioutils
-github.com/docker/docker/pkg/promise
-# github.com/docker/go-connections v0.4.1-0.20180821093606-97c2040d34df
+github.com/docker/docker/pkg/stdcopy
+github.com/docker/docker/pkg/system
+# github.com/docker/go-connections v0.4.1-0.20210727194412-58542c764a11
+## explicit
 github.com/docker/go-connections/nat
-# github.com/docker/go-units v0.3.4-0.20181030082039-2fb04c6466a5
+# github.com/docker/go-units v0.4.0
 github.com/docker/go-units
-# github.com/fsouza/go-dockerclient v1.7.3 => github.com/openshift/go-dockerclient v0.0.0-20181016170459-ff9568be2219
+# github.com/fsouza/go-dockerclient v1.7.7
+## explicit
 github.com/fsouza/go-dockerclient
-github.com/fsouza/go-dockerclient/internal/archive
-github.com/fsouza/go-dockerclient/internal/jsonmessage
-github.com/fsouza/go-dockerclient/internal/term
-# github.com/gogo/protobuf v1.2.2-0.20190306082329-c5a62797aee0
+# github.com/gogo/protobuf v1.3.2
+github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
-# github.com/golang/protobuf v1.2.0
+github.com/gogo/protobuf/protoc-gen-gogo/descriptor
+# github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+github.com/golang/groupcache/lru
+# github.com/golang/protobuf v1.5.0
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/konsorten/go-windows-terminal-sequences v1.0.2
-github.com/konsorten/go-windows-terminal-sequences
-# github.com/opencontainers/go-digest v1.0.0-rc1.0.20190228220655-ac19fd6e7483
+# github.com/klauspost/compress v1.13.6
+github.com/klauspost/compress
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/snapref
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
+# github.com/klauspost/pgzip v1.2.5
+github.com/klauspost/pgzip
+# github.com/moby/sys/mount v0.2.0
+github.com/moby/sys/mount
+# github.com/moby/sys/mountinfo v0.4.1
+github.com/moby/sys/mountinfo
+# github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
+github.com/moby/term
+github.com/moby/term/windows
+# github.com/morikuni/aec v1.0.0
+github.com/morikuni/aec
+# github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
-# github.com/opencontainers/image-spec v1.0.2-0.20190306222905-243ea084a444
-github.com/opencontainers/image-spec/specs-go/v1
+# github.com/opencontainers/image-spec v1.0.2
 github.com/opencontainers/image-spec/specs-go
-# github.com/opencontainers/runc v1.0.0-rc6.0.20190305074555-923a8f8a9a07
-github.com/opencontainers/runc/libcontainer/system
+github.com/opencontainers/image-spec/specs-go/v1
+# github.com/opencontainers/runc v1.0.3
 github.com/opencontainers/runc/libcontainer/user
-# github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
+github.com/opencontainers/runc/libcontainer/userns
+# github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+github.com/opencontainers/runtime-spec/specs-go
+# github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/pquerna/ffjson v0.0.0-20171002144729-d49c2bc1aa13
-github.com/pquerna/ffjson/fflib/v1
-github.com/pquerna/ffjson/fflib/v1/internal
-# github.com/sirupsen/logrus v1.3.1-0.20190306131408-d7b6bf5e4d26
+# github.com/sirupsen/logrus v1.8.1
+## explicit
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.6.1
+# github.com/stretchr/testify v1.7.0
+## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
-golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20190107210223-45ffb0cd1ba0
+# github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
+github.com/syndtr/gocapability/capability
+# github.com/ulikunitz/xz v0.5.10
+github.com/ulikunitz/xz
+github.com/ulikunitz/xz/internal/hash
+github.com/ulikunitz/xz/internal/xlog
+github.com/ulikunitz/xz/lzma
+# go.opencensus.io v0.22.3
+go.opencensus.io
+go.opencensus.io/internal
+go.opencensus.io/trace
+go.opencensus.io/trace/internal
+go.opencensus.io/trace/tracestate
+# golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d
+## explicit
 golang.org/x/net/context
-# golang.org/x/sys v0.0.0-20190108104531-7fbe1cd0fcc2
+# golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
+## explicit
+golang.org/x/sys/execabs
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# google.golang.org/genproto v0.0.0-20170523043604-d80a6e20e776
+# google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.14.0
+# google.golang.org/grpc v1.33.2
 google.golang.org/grpc/codes
+google.golang.org/grpc/internal/status
 google.golang.org/grpc/status
+# google.golang.org/protobuf v1.27.1
+google.golang.org/protobuf/encoding/prototext
+google.golang.org/protobuf/encoding/protowire
+google.golang.org/protobuf/internal/descfmt
+google.golang.org/protobuf/internal/descopts
+google.golang.org/protobuf/internal/detrand
+google.golang.org/protobuf/internal/encoding/defval
+google.golang.org/protobuf/internal/encoding/messageset
+google.golang.org/protobuf/internal/encoding/tag
+google.golang.org/protobuf/internal/encoding/text
+google.golang.org/protobuf/internal/errors
+google.golang.org/protobuf/internal/filedesc
+google.golang.org/protobuf/internal/filetype
+google.golang.org/protobuf/internal/flags
+google.golang.org/protobuf/internal/genid
+google.golang.org/protobuf/internal/impl
+google.golang.org/protobuf/internal/order
+google.golang.org/protobuf/internal/pragma
+google.golang.org/protobuf/internal/set
+google.golang.org/protobuf/internal/strs
+google.golang.org/protobuf/internal/version
+google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
+google.golang.org/protobuf/reflect/protoreflect
+google.golang.org/protobuf/reflect/protoregistry
+google.golang.org/protobuf/runtime/protoiface
+google.golang.org/protobuf/runtime/protoimpl
+google.golang.org/protobuf/types/descriptorpb
+google.golang.org/protobuf/types/known/anypb
+google.golang.org/protobuf/types/known/durationpb
+google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 gopkg.in/yaml.v3
-# k8s.io/klog v0.2.1-0.20190306015804-8e90cee79f82
+# k8s.io/klog v1.0.0
+## explicit
 k8s.io/klog

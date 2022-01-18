@@ -1,34 +1,30 @@
-.PHONY: \
-	all \
-	lint \
-	vet \
-	fmtcheck \
-	pretest \
-	test \
-	integration
+ifeq "$(strip $(shell go env GOARCH))" "amd64"
+RACE_FLAG := -race
+endif
 
-all: test
-
-lint:
-	@ go get -v golang.org/x/lint/golint
-	[ -z "$$(golint . | grep -v 'type name will be used as docker.DockerInfo' | grep -v 'context.Context should be the first' | tee /dev/stderr)" ]
-
-vet:
-	go vet ./...
-
-fmtcheck:
-	[ -z "$$(gofmt -s -d *.go ./testing | tee /dev/stderr)" ]
-
-testdeps:
-	go get -u github.com/golang/dep/cmd/dep
-	dep ensure -v
-
-pretest: testdeps lint vet fmtcheck
-
-gotest:
-	go test -race ./...
-
+.PHONY: test
 test: pretest gotest
 
+.PHONY: golangci-lint
+golangci-lint:
+	cd /tmp && GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	golangci-lint run
+
+.PHONY: staticcheck
+staticcheck:
+	cd /tmp && GO111MODULE=on go get honnef.co/go/tools/cmd/staticcheck@master
+	staticcheck ./...
+
+.PHONY: lint
+lint: golangci-lint staticcheck
+
+.PHONY: pretest
+pretest: lint
+
+.PHONY: gotest
+gotest:
+	go test $(RACE_FLAG) -vet all ./...
+
+.PHONY: integration
 integration:
 	go test -tags docker_integration -run TestIntegration -v

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !windows
 // +build !windows
 
 package docker
@@ -12,6 +13,8 @@ import (
 	"net/http"
 )
 
+const defaultHost = "unix:///var/run/docker.sock"
+
 // initializeNativeClient initializes the native Unix domain socket client on
 // Unix-style operating systems
 func (c *Client) initializeNativeClient(trFunc func() *http.Transport) {
@@ -21,11 +24,8 @@ func (c *Client) initializeNativeClient(trFunc func() *http.Transport) {
 	sockPath := c.endpointURL.Path
 
 	tr := trFunc()
-
-	tr.Dial = func(network, addr string) (net.Conn, error) {
-		return c.Dialer.Dial(unixProtocol, sockPath)
-	}
-	tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	tr.Proxy = nil
+	tr.DialContext = func(_ context.Context, network, addr string) (net.Conn, error) {
 		return c.Dialer.Dial(unixProtocol, sockPath)
 	}
 	c.HTTPClient.Transport = tr

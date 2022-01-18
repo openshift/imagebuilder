@@ -319,7 +319,7 @@ func archiveFromFile(file string, src, dst string, excludes []string, check Dire
 	cc := newCloser(func() error {
 		err := f.Close()
 		if !mapper.foundItems {
-			return makeNotExistError(src)
+			return fmt.Errorf("%s: %w", src, os.ErrNotExist)
 		}
 		return err
 	})
@@ -335,7 +335,7 @@ func archiveFromContainer(in io.Reader, src, dst string, excludes []string, chec
 	r, err := transformArchive(in, false, mapper.Filter)
 	rc := readCloser{Reader: r, Closer: newCloser(func() error {
 		if !mapper.foundItems {
-			return makeNotExistError(src)
+			return fmt.Errorf("%s: %w", src, os.ErrNotExist)
 		}
 		return nil
 	})}
