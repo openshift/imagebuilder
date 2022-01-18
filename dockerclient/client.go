@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -818,8 +819,8 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		if chownGid != -1 {
 			h.Gid = chownGid
 		}
-		if err := forceHeaderFormat(h); err != nil {
-			return nil, false, false, nil
+		if (h.Uid > 0x1fffff || h.Gid > 0x1fffff) && h.Format == tar.FormatUSTAR {
+			h.Format = tar.FormatPAX
 		}
 		return nil, false, false, nil
 	}
@@ -851,7 +852,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 			return nil, fmt.Errorf("size mismatch reading contents of %q: %v", path, err)
 		}
 		hdr, err = tr.Next()
-		if err != nil && !errorIsEOF(err) {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("error reading archive of %q: %v", path, err)
 		}
 		if err == nil {
@@ -1260,7 +1261,7 @@ func snapshotPath(path, containerID, tempDir string, client *docker.Client) (str
 			}
 			return len(h.Name) > 0
 		})
-		if err == nil || errorIsEOF(err) {
+		if err == nil || errors.Is(err, io.EOF) {
 			tw.Flush()
 			w.Close()
 			klog.V(5).Infof("Snapshot rewritten from %s", path)
