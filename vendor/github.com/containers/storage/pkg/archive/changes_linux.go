@@ -2,15 +2,18 @@ package archive
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"syscall"
 	"unsafe"
 
 	"github.com/containers/storage/pkg/idtools"
 	"github.com/containers/storage/pkg/system"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -83,7 +86,30 @@ func walkchunk(path string, fi os.FileInfo, dir string, root *FileInfo) error {
 		return err
 	}
 	info.stat = stat
-	info.capability, _ = system.Lgetxattr(cpath, "security.capability") // lgetxattr(2): fs access
+	info.capability, err = system.Lgetxattr(cpath, "security.capability") // lgetxattr(2): fs access
+	if err != nil && !errors.Is(err, system.EOPNOTSUPP) {
+		return err
+	}
+	xattrs, err := system.Llistxattr(cpath)
+	if err != nil && !errors.Is(err, system.EOPNOTSUPP) {
+		return err
+	}
+	for _, key := range xattrs {
+		if strings.HasPrefix(key, "user.") {
+			value, err := system.Lgetxattr(cpath, key)
+			if err != nil {
+				if errors.Is(err, system.E2BIG) {
+					logrus.Errorf("archive: Skipping xattr for file %s since value is too big: %s", cpath, key)
+					continue
+				}
+				return err
+			}
+			if info.xattrs == nil {
+				info.xattrs = make(map[string]string)
+			}
+			info.xattrs[key] = string(value)
+		}
+	}
 	parent.children[info.name] = info
 	return nil
 }
@@ -270,23 +296,20 @@ func parseDirent(buf []byte, names []nameIno) (consumed int, newnames []nameIno)
 		if dirent.Ino == 0 { // File absent in directory.
 			continue
 		}
-		bytes := (*[10000]byte)(unsafe.Pointer(&dirent.Name[0]))
-		var name = string(bytes[0:clen(bytes[:])])
+		builder := make([]byte, 0, dirent.Reclen)
+		for i := 0; i < len(dirent.Name); i++ {
+			if dirent.Name[i] == 0 {
+				break
+			}
+			builder = append(builder, byte(dirent.Name[i]))
+		}
+		name := string(builder)
 		if name == "." || name == ".." { // Useless names
 			continue
 		}
 		names = append(names, nameIno{name, dirent.Ino})
 	}
 	return origlen - len(buf), names
-}
-
-func clen(n []byte) int {
-	for i := 0; i < len(n); i++ {
-		if n[i] == 0 {
-			return i
-		}
-	}
-	return len(n)
 }
 
 // OverlayChanges walks the path rw and determines changes for the files in the path,
@@ -307,9 +330,7 @@ func overlayLowerContainsWhiteout(root, path string) (bool, error) {
 		return false, err
 	}
 	if err == nil && stat.Mode()&os.ModeCharDevice != 0 {
-		// Check if there's whiteout for the specified item in the specified layer.
-		s := stat.Sys().(*syscall.Stat_t)
-		if major(s.Rdev) == 0 && minor(s.Rdev) == 0 {
+		if isWhiteOut(stat) {
 			return true, nil
 		}
 	}
@@ -319,8 +340,7 @@ func overlayLowerContainsWhiteout(root, path string) (bool, error) {
 func overlayDeletedFile(layers []string, root, path string, fi os.FileInfo) (string, error) {
 	// If it's a whiteout item, then a file or directory with that name is removed by this layer.
 	if fi.Mode()&os.ModeCharDevice != 0 {
-		s := fi.Sys().(*syscall.Stat_t)
-		if major(s.Rdev) == 0 && minor(s.Rdev) == 0 {
+		if isWhiteOut(fi) {
 			return path, nil
 		}
 	}
@@ -329,7 +349,7 @@ func overlayDeletedFile(layers []string, root, path string, fi os.FileInfo) (str
 		return "", nil
 	}
 	// If the directory isn't marked as opaque, then it's just a normal directory.
-	opaque, err := system.Lgetxattr(filepath.Join(root, path), "trusted.overlay.opaque")
+	opaque, err := system.Lgetxattr(filepath.Join(root, path), getOverlayOpaqueXattrName())
 	if err != nil {
 		return "", err
 	}
@@ -350,10 +370,7 @@ func overlayDeletedFile(layers []string, root, path string, fi os.FileInfo) (str
 		}
 		if err == nil {
 			if stat.Mode()&os.ModeCharDevice != 0 {
-				// It's a whiteout for this directory, so it can't have been
-				// deleted in this layer.
-				s := stat.Sys().(*syscall.Stat_t)
-				if major(s.Rdev) == 0 && minor(s.Rdev) == 0 {
+				if isWhiteOut(stat) {
 					return "", nil
 				}
 			}
@@ -370,10 +387,7 @@ func overlayDeletedFile(layers []string, root, path string, fi os.FileInfo) (str
 			}
 			if err == nil {
 				if stat.Mode()&os.ModeCharDevice != 0 {
-					// If it's whiteout for a parent directory, then the
-					// original directory wasn't inherited into the top layer.
-					s := stat.Sys().(*syscall.Stat_t)
-					if major(s.Rdev) == 0 && minor(s.Rdev) == 0 {
+					if isWhiteOut(stat) {
 						return "", nil
 					}
 				}
