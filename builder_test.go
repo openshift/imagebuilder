@@ -328,6 +328,18 @@ func TestArgs(t *testing.T) {
 			expectedValue: "FOO=bar",
 		},
 		{
+			name:          "multiple args in single step",
+			dockerfile:    "FROM centos\nARG FOO=stuff WORLD=hello\n",
+			args:          map[string]string{},
+			expectedValue: "WORLD=hello",
+		},
+		{
+			name:          "multiple args in single step",
+			dockerfile:    "FROM centos\nARG FOO=stuff WORLD=hello\n",
+			args:          map[string]string{},
+			expectedValue: "FOO=stuff",
+		},
+		{
 			name:          "headingArgRedefine",
 			dockerfile:    "ARG FOO=stuff\nFROM centos\nARG FOO\n",
 			args:          map[string]string{},
