@@ -303,6 +303,9 @@ type Builder struct {
 	PendingCopies  []Copy
 
 	Warnings []string
+	// Raw platform string specified with `FROM --platform` of the stage
+	// Its up to the implementation or client to parse and use this field
+	Platform string
 }
 
 func NewBuilder(args map[string]string) *Builder {

@@ -660,3 +660,26 @@ func TestDispatchRunFlags(t *testing.T) {
 	}
 
 }
+
+func TestDispatchFromFlags(t *testing.T) {
+	expectedPlatform := "linux/arm64"
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--platform=linux/arm64"}
+	args := []string{""}
+	original := "FROM --platform=linux/arm64 busybox"
+
+	if err := from(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+
+	if mybuilder.Platform != expectedPlatform {
+		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
+	}
+}

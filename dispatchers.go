@@ -234,6 +234,20 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 			return fmt.Errorf("Windows does not support FROM scratch")
 		}
 	}
+	userArgs := mergeEnv(envMapAsSlice(b.Args), b.Env)
+	for _, a := range flagArgs {
+		arg, err := ProcessWord(a, userArgs)
+		if err != nil {
+			return err
+		}
+		switch {
+		case strings.HasPrefix(arg, "--platform="):
+			platformString := strings.TrimPrefix(arg, "--platform=")
+			b.Platform = platformString
+		default:
+			return fmt.Errorf("FROM only supports the --platform flag")
+		}
+	}
 	b.RunConfig.Image = name
 	// TODO: handle onbuild
 	return nil
