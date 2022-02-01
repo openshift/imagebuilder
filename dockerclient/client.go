@@ -261,7 +261,7 @@ func (e *ClientExecutor) Prepare(b *imagebuilder.Builder, node *parser.Node, fro
 			e.Deferred = append(e.Deferred, func() error { return e.Client.RemoveImage(from) })
 		}
 		klog.V(4).Infof("Retrieving image %q", from)
-		e.Image, err = e.LoadImage(from)
+		e.Image, err = e.LoadImageWithPlatform(from, b.Platform)
 		if err != nil {
 			return err
 		}
@@ -557,6 +557,12 @@ func randSeq(source string, n int) (string, error) {
 // LoadImage checks the client for an image matching from. If not found,
 // attempts to pull the image and then tries to inspect again.
 func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
+	return e.LoadImageWithPlatform(from, "")
+}
+
+// LoadImage checks the client for an image matching from. If not found,
+// attempts to pull the image with specified platform string.
+func (e *ClientExecutor) LoadImageWithPlatform(from string, platform string) (*docker.Image, error) {
 	image, err := e.Client.InspectImage(from)
 	if err == nil {
 		return image, nil
@@ -607,6 +613,7 @@ func (e *ClientExecutor) LoadImage(from string) (*docker.Image, error) {
 				Repository:    repository,
 				Tag:           tag,
 				OutputStream:  pullWriter,
+				Platform:      platform,
 				RawJSONStream: true,
 			}
 			if klog.V(5) {
