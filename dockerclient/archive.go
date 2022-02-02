@@ -305,7 +305,7 @@ func archiveFromFile(file string, src, dst string, excludes []string, check Dire
 		pw.CloseWithError(err)
 	}
 
-	mapper, _, err := newArchiveMapper(src, dst, excludes, true, check, refetch)
+	mapper, _, err := newArchiveMapper(src, dst, excludes, false, true, check, refetch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -327,7 +327,7 @@ func archiveFromFile(file string, src, dst string, excludes []string, check Dire
 }
 
 func archiveFromContainer(in io.Reader, src, dst string, excludes []string, check DirectoryCheck, refetch FetchArchiveFunc) (io.ReadCloser, string, error) {
-	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, false, check, refetch)
+	mapper, archiveRoot, err := newArchiveMapper(src, dst, excludes, true, false, check, refetch)
 	if err != nil {
 		return nil, "", err
 	}
@@ -437,16 +437,18 @@ func archivePathMapper(src, dst string, isDestDir bool) (fn func(name string, is
 }
 
 type archiveMapper struct {
-	exclude     *fileutils.PatternMatcher
-	rename      func(name string, isDir bool) (string, bool)
-	prefix      string
-	resetOwners bool
-	foundItems  bool
-	refetch     FetchArchiveFunc
-	renameLinks map[string]string
+	exclude      *fileutils.PatternMatcher
+	rename       func(name string, isDir bool) (string, bool)
+	prefix       string
+	dst          string
+	resetDstMode bool
+	resetOwners  bool
+	foundItems   bool
+	refetch      FetchArchiveFunc
+	renameLinks  map[string]string
 }
 
-func newArchiveMapper(src, dst string, excludes []string, resetOwners bool, check DirectoryCheck, refetch FetchArchiveFunc) (*archiveMapper, string, error) {
+func newArchiveMapper(src, dst string, excludes []string, resetDstMode, resetOwners bool, check DirectoryCheck, refetch FetchArchiveFunc) (*archiveMapper, string, error) {
 	ex, err := fileutils.NewPatternMatcher(excludes)
 	if err != nil {
 		return nil, "", err
@@ -491,12 +493,14 @@ func newArchiveMapper(src, dst string, excludes []string, resetOwners bool, chec
 	mapperFn := archivePathMapper(srcPattern, dst, isDestDir)
 
 	return &archiveMapper{
-		exclude:     ex,
-		rename:      mapperFn,
-		prefix:      prefix,
-		resetOwners: resetOwners,
-		refetch:     refetch,
-		renameLinks: make(map[string]string),
+		exclude:      ex,
+		rename:       mapperFn,
+		prefix:       prefix,
+		dst:          dst,
+		resetDstMode: resetDstMode,
+		resetOwners:  resetOwners,
+		refetch:      refetch,
+		renameLinks:  make(map[string]string),
 	}, archiveRoot, nil
 }
 
@@ -529,6 +533,10 @@ func (m *archiveMapper) Filter(h *tar.Header, r io.Reader) ([]byte, bool, bool, 
 	m.foundItems = true
 
 	h.Name = newName
+
+	if m.resetDstMode && isDir && path.Clean(h.Name) == path.Clean(m.dst) {
+		h.Mode = (h.Mode & ^0o777) | 0o755
+	}
 
 	if h.Typeflag == tar.TypeLink {
 		if newTarget, ok := m.renameLinks[h.Linkname]; ok {
