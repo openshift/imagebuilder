@@ -1012,12 +1012,20 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 			if src == "" {
 				src = "*"
 			}
+			assumeDstIsDirectory := len(c.Src) > 1
+		repeatThisSrc:
 			klog.V(4).Infof("Archiving %s download=%t fromFS=%t from=%s", src, c.Download, c.FromFS, c.From)
 			var r io.Reader
 			var closer io.Closer
 			var err error
 			if len(c.From) > 0 {
-				r, closer, err = e.archiveFromContainer(c.From, src, c.Dest)
+				if !assumeDstIsDirectory {
+					var err error
+					if assumeDstIsDirectory, err = e.isContainerGlobMultiple(e.Client, c.From, src); err != nil {
+						return err
+					}
+				}
+				r, closer, err = e.archiveFromContainer(c.From, src, c.Dest, assumeDstIsDirectory)
 			} else {
 				r, closer, err = e.Archive(c.FromFS, src, c.Dest, c.Download, excludes)
 			}
@@ -1027,6 +1035,10 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 			asOwner := ""
 			if c.Chown != "" {
 				asOwner = fmt.Sprintf(" as %d:%d", chownUid, chownGid)
+				// the daemon would implicitly create missing
+				// directories with the wrong ownership, so
+				// check for any that don't exist and create
+				// them ourselves
 				missingParents, err := findMissingParents(c.Dest)
 				if err != nil {
 					return err
@@ -1050,6 +1062,13 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 			if klog.V(6) {
 				logArchiveOutput(r, "Archive file for %s")
 			}
+			// add a workaround allow us to notice if a
+			// dstNeedsToBeDirectoryError was returned while
+			// attempting to read the data we're uploading,
+			// indicating that we thought the content would be just
+			// one item, but it actually isn't
+			reader := &readErrorWrapper{Reader: r}
+			r = reader
 			err = e.Client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
 				InputStream: r,
 				Path:        "/",
@@ -1058,11 +1077,28 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 				klog.Errorf("Error while closing stream container copy stream %s: %v", container.ID, err)
 			}
 			if err != nil {
+				if errors.Is(reader.err, dstNeedsToBeDirectoryError) && !assumeDstIsDirectory {
+					assumeDstIsDirectory = true
+					goto repeatThisSrc
+				}
+				if apiErr, ok := err.(*docker.Error); ok && apiErr.Status == 404 {
+					klog.V(4).Infof("path %s did not exist in container %s: %v", src, container.ID, err)
+				}
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+type readErrorWrapper struct {
+	io.Reader
+	err error
+}
+
+func (r *readErrorWrapper) Read(p []byte) (n int, err error) {
+	n, r.err = r.Reader.Read(p)
+	return n, r.err
 }
 
 type closers []func() error
@@ -1077,7 +1113,7 @@ func (c closers) Close() error {
 	return lastErr
 }
 
-func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.Reader, io.Closer, error) {
+func (e *ClientExecutor) archiveFromContainer(from string, src, dst string, multipleSources bool) (io.Reader, io.Closer, error) {
 	var containerID string
 	if other, ok := e.Named[from]; ok {
 		if other.Container == nil {
@@ -1114,7 +1150,7 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 		})
 		pw.CloseWithError(err)
 	}
-	ar, archiveRoot, err := archiveFromContainer(pr, src, dst, nil, check, fetch)
+	ar, archiveRoot, err := archiveFromContainer(pr, src, dst, nil, check, fetch, multipleSources)
 	if err != nil {
 		pr.Close()
 		pw.Close()
@@ -1130,6 +1166,51 @@ func (e *ClientExecutor) archiveFromContainer(from string, src, dst string) (io.
 	})
 	go fetch(pw)
 	return &readCloser{Reader: ar, Closer: closer}, pr, nil
+}
+
+func (e *ClientExecutor) isContainerGlobMultiple(client *docker.Client, from, glob string) (bool, error) {
+	reader, closer, err := e.archiveFromContainer(from, glob, "/ignored", true)
+	if err != nil {
+		return false, nil
+	}
+
+	defer closer.Close()
+	tr := tar.NewReader(reader)
+
+	h, err := tr.Next()
+	if err != nil {
+		if err == io.EOF {
+			err = nil
+		} else {
+			if apiErr, ok := err.(*docker.Error); ok && apiErr.Status == 404 {
+				klog.V(4).Infof("path %s did not exist in container %s: %v", glob, e.Container.ID, err)
+				err = nil
+			}
+		}
+		return false, err
+	}
+
+	klog.V(4).Infof("Retrieved first header from %s using glob %s: %#v", from, glob, h)
+
+	h, err = tr.Next()
+	if err != nil {
+		if err == io.EOF {
+			err = nil
+		}
+		return false, err
+	}
+
+	klog.V(4).Infof("Retrieved second header from %s using glob %s: %#v", from, glob, h)
+
+	// take the remainder of the input and discard it
+	go func() {
+		n, err := io.Copy(ioutil.Discard, reader)
+		if n > 0 || err != nil {
+			klog.V(6).Infof("Discarded %d bytes from end of from glob check, and got error: %v", n, err)
+		}
+	}()
+
+	return true, nil
 }
 
 func (e *ClientExecutor) Archive(fromFS bool, src, dst string, allowDownload bool, excludes []string) (io.Reader, io.Closer, error) {

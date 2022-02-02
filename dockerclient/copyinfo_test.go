@@ -253,7 +253,7 @@ func TestCalcCopyInfo(t *testing.T) {
 				t.Errorf("did not see paths: %#v", expect)
 			}
 
-			options, err := archiveOptionsFor(infos, test.dstPath, test.excludes, testDirectoryCheck(test.check))
+			options, err := archiveOptionsFor("", infos, test.dstPath, test.excludes, testDirectoryCheck(test.check))
 			if err != nil {
 				t.Fatal(err)
 			}
