@@ -682,10 +682,26 @@ func (e *ClientExecutor) Preserve(path string) error {
 }
 
 func (e *ClientExecutor) EnsureContainerPath(path string) error {
-	return e.createOrReplaceContainerPathWithOwner(path, 0, 0)
+	return e.createOrReplaceContainerPathWithOwner(path, 0, 0, nil)
 }
 
-func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid, gid int) error {
+func (e *ClientExecutor) EnsureContainerPathAs(path, user string, mode *os.FileMode) error {
+	uid, gid := 0, 0
+
+	u, g, err := e.getUser(user)
+	if err == nil {
+		uid = u
+		gid = g
+	}
+
+	return e.createOrReplaceContainerPathWithOwner(path, uid, gid, mode)
+}
+
+func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid, gid int, mode *os.FileMode) error {
+	if mode == nil {
+		m := os.FileMode(0755)
+		mode = &m
+	}
 	createPath := func(dest string) error {
 		var writerErr error
 		if !strings.HasSuffix(dest, "/") {
@@ -704,7 +720,7 @@ func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid,
 			writerErr = tarball.WriteHeader(&tar.Header{
 				Name:     dest,
 				Typeflag: tar.TypeDir,
-				Mode:     0755,
+				Mode:     int64(*mode),
 				Uid:      uid,
 				Gid:      gid,
 			})
@@ -1055,7 +1071,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 					sort.Strings(missingParents)
 					klog.V(5).Infof("Uploading directories %v to %s%s", missingParents, container.ID, asOwner)
 					for _, missingParent := range missingParents {
-						if err := e.createOrReplaceContainerPathWithOwner(missingParent, chownUid, chownGid); err != nil {
+						if err := e.createOrReplaceContainerPathWithOwner(missingParent, chownUid, chownGid, nil); err != nil {
 							return err
 						}
 					}
