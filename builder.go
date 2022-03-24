@@ -392,7 +392,7 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	}
 
 	if len(b.RunConfig.WorkingDir) > 0 {
-		if err := exec.EnsureContainerPath(b.RunConfig.WorkingDir); err != nil {
+		if err := exec.EnsureContainerPathAs(b.RunConfig.WorkingDir, b.RunConfig.User, nil); err != nil {
 			return err
 		}
 	}
