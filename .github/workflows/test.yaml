@@ -1,0 +1,30 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  Test:
+    runs-on: ubuntu-20.04
+    name: Conformance tests
+    steps:
+      - uses: actions/checkout@v2.1.0
+      - uses: uraimo/run-on-arch-action@v2.0.5
+        name: Build
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+
+          githubToken: ${{ github.token }}
+
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y golang docker
+
+          run: |
+            make
+            docker rmi -a busybox
+            docker pull busybox
+            docker pull centos:7
+            chmod -R go-w ./dockerclient/testdata
+            go test ./dockerclient -tags conformance -timeout 30m
