@@ -516,12 +516,12 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, flagArgs
 		}
 
 		healthcheck := docker.HealthConfig{}
-
+		// Use docker defaults for flags https://docs.docker.com/engine/reference/builder/#healthcheck
 		flags := flag.NewFlagSet("", flag.ContinueOnError)
 		flags.String("start-period", "", "")
-		flags.String("interval", "", "")
-		flags.String("timeout", "", "")
-		flRetries := flags.String("retries", "", "")
+		flags.String("interval", "30s", "")
+		flags.String("timeout", "30s", "")
+		flRetries := flags.String("retries", "3", "")
 
 		if err := flags.Parse(flagArgs); err != nil {
 			return err
