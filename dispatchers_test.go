@@ -683,3 +683,26 @@ func TestDispatchFromFlags(t *testing.T) {
 		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
 	}
 }
+
+func TestDispatchFromFlagsAndUseBuiltInArgs(t *testing.T) {
+	expectedPlatform := localspec.OS + "/" + localspec.Architecture
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--platform=$BUILDPLATFORM"}
+	args := []string{""}
+	original := "FROM --platform=$BUILDPLATFORM busybox"
+
+	if err := from(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+
+	if mybuilder.Platform != expectedPlatform {
+		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
+	}
+}
