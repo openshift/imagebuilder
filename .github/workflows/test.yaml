@@ -1,0 +1,24 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  Test:
+    runs-on: ubuntu-20.04
+    name: Conformance tests
+
+    steps:
+      - uses: actions/checkout@v2.1.0
+
+      - name: Install dependencies
+        run: |
+            sudo apt-get update -q -y
+            sudo apt-get install -q -y golang
+
+      - name: Run tests
+        run: |
+            make
+            sudo docker pull busybox
+            sudo docker pull centos:7
+            chmod -R go-w ./dockerclient/testdata
+            sudo go test ./dockerclient -tags conformance -timeout 60m
