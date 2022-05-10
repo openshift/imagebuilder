@@ -458,6 +458,16 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/multistage",
 			Dockerfile: "Dockerfile.env",
 		},
+		{
+			Name:       "nonroot-USER-before-WORKDIR-used",
+			ContextDir: "testdata/user-workdir",
+			Dockerfile: "Dockerfile.used",
+		},
+		{
+			Name:       "nonroot-USER-before-WORKDIR-notused",
+			ContextDir: "testdata/user-workdir",
+			Dockerfile: "Dockerfile.notused",
+		},
 	}
 
 	for i, test := range testCases {
