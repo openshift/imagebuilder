@@ -199,6 +199,72 @@ func TestDispatchCopyChmod(t *testing.T) {
 	}
 }
 
+func TestDispatchCopyKeepownership(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	mybuilder2 := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+
+	// Test Bad chown together with keep-ownership values
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=6731:6731", "--keep-ownership"}
+	original := "COPY --chown=6731:6731 --keep-ownership /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	err := dispatchCopy(&mybuilder, args, nil, flagArgs, original)
+	convErr := errConflictChownKeepOwnerShip("COPY")
+	if err != nil && convErr != nil && err.Error() != convErr.Error() {
+		t.Errorf("Expected error of conflict between chown and keep-ownership, instead got error: %v", err)
+	}
+	if err == nil {
+		t.Errorf("Expected error of conflict between chown and keep-ownership")
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:              "",
+			Src:               []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:              "/root/", // destination must contain a trailing slash
+			Download:          false,
+			Chown:             "",
+			PreserveOwnership: true, // we expect that this is true - but only if no chown flag was used with it
+		},
+	}
+	if reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %#v, to not match %#v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+
+	// Test Good chmod values
+	flagArgs = []string{"--keep-ownership"}
+	original = "COPY --keep-ownership /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchCopy error: %v", err)
+	}
+
+	expectedPendingCopies = []Copy{
+		{
+			From:              "",
+			Src:               []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:              "/root/", // destination must contain a trailing slash
+			Download:          false,
+			Chown:             "",
+			PreserveOwnership: true, // we expect that this is true - but only if no chown flag was used with it
+		},
+	}
+	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
+	}
+}
+
 func TestDispatchAddChownWithEnvironment(t *testing.T) {
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -573,6 +639,72 @@ func TestDispatchAddChown(t *testing.T) {
 			Dest:     "/root/", // destination must contain a trailing slash
 			Download: true,
 			Chown:    "6731:6731",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
+	}
+}
+
+func TestDispatchAddKeepownership(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	mybuilder2 := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+
+	// Test Bad chown together with keep-ownership values
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--chown=6731:6731", "--keep-ownership"}
+	original := "ADD --chown=6731:6731 --keep-ownership /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	err := add(&mybuilder, args, nil, flagArgs, original)
+	convErr := errConflictChownKeepOwnerShip("ADD")
+	if err != nil && convErr != nil && err.Error() != convErr.Error() {
+		t.Errorf("Expected error of conflict between chown and keep-ownership, instead got error: %v", err)
+	}
+	if err == nil {
+		t.Errorf("Expected error of conflict between chown and keep-ownership")
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:              "",
+			Src:               []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:              "/root/", // destination must contain a trailing slash
+			Download:          true,
+			Chown:             "",
+			PreserveOwnership: true, // we expect that this is true - but only if no chown flag was used with it
+		},
+	}
+	if reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %#v, to not match %#v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+
+	// Test Good chmod values
+	flagArgs = []string{"--keep-ownership"}
+	original = "ADD --keep-ownership /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := add(&mybuilder2, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchCopy error: %v", err)
+	}
+
+	expectedPendingCopies = []Copy{
+		{
+			From:              "",
+			Src:               []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:              "/root/", // destination must contain a trailing slash
+			Download:          true,
+			Chown:             "",
+			PreserveOwnership: true, // we expect that this is true - but only if no chown flag was used with it
 		},
 	}
 	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
