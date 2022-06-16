@@ -16,6 +16,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 
 	"github.com/openshift/imagebuilder/dockerfile/parser"
+	"github.com/containerd/containerd/platforms"
 )
 
 func TestVolumeSet(t *testing.T) {
@@ -194,6 +195,46 @@ ARG BAR=baz
 FROM busybox:$FOO
 ARG BAZ=banana
 RUN echo $FOO $BAR`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := NewBuilder(tc.args)
+			from, err := b.From(n)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if from != tc.expectedFrom {
+				t.Fatalf("expected %s, got %s", tc.expectedFrom, from)
+			}
+		})
+	}
+}
+
+// Test if `FROM some-${SOME-BUILT-IN-ARG}` args gets resolved correctly.
+func TestArgResolutionOfDefaultVariables(t *testing.T) {
+	// Get architecture from host
+	var localspec = platforms.DefaultSpec()
+	for _, tc := range []struct {
+		dockerfile   string
+		name         string
+		args         map[string]string
+		expectedFrom string
+	}{
+		{name: "use-default-built-arg",
+			dockerfile:   "FROM platform-${TARGETARCH}",
+			args:         map[string]string{"FOO": "bar"},
+			expectedFrom: "platform-" + localspec.Architecture},
+		{name: "override-default-built-arg",
+			dockerfile:   "FROM platform-${TARGETARCH}",
+			args:         map[string]string{"TARGETARCH": "bar"},
+			expectedFrom: "platform-bar"},
+		{name: "random-built-arg",
+			dockerfile:   "FROM ${FOO}",
+			args:         map[string]string{"FOO": "bar"},
+			expectedFrom: "bar"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			n, err := ParseDockerfile(strings.NewReader(tc.dockerfile))
 			if err != nil {
 				t.Fatal(err)
 			}
