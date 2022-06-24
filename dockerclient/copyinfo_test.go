@@ -18,6 +18,7 @@ func TestCalcCopyInfo(t *testing.T) {
 		excludes       []string
 		rebaseNames    map[string]string
 		check          map[string]bool
+		download       bool
 	}{
 		{
 			origPath:       "subdir/*",
@@ -253,7 +254,7 @@ func TestCalcCopyInfo(t *testing.T) {
 				t.Errorf("did not see paths: %#v", expect)
 			}
 
-			options, err := archiveOptionsFor("", infos, test.dstPath, test.excludes, testDirectoryCheck(test.check))
+			options, err := archiveOptionsFor("", infos, test.dstPath, test.excludes, test.download, testDirectoryCheck(test.check))
 			if err != nil {
 				t.Fatal(err)
 			}
