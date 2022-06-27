@@ -224,22 +224,35 @@ func TestArgResolutionOfDefaultVariables(t *testing.T) {
 			dockerfile:   "FROM platform-${TARGETARCH}",
 			args:         map[string]string{"FOO": "bar"},
 			expectedFrom: "platform-" + localspec.Architecture},
-		{name: "override-default-built-arg",
+		// Override should not work since we did not declare
+		{name: "override-default-built-arg-without-declaration",
 			dockerfile:   "FROM platform-${TARGETARCH}",
+			args:         map[string]string{"TARGETARCH": "bar"},
+			expectedFrom: "platform-" + localspec.Architecture},
+		{name: "override-default-built-arg",
+			dockerfile:   "ARG TARGETARCH\nFROM platform-${TARGETARCH}",
 			args:         map[string]string{"TARGETARCH": "bar"},
 			expectedFrom: "platform-bar"},
 		{name: "random-built-arg",
-			dockerfile:   "FROM ${FOO}",
+			dockerfile:   "ARG FOO\nFROM ${FOO}",
 			args:         map[string]string{"FOO": "bar"},
 			expectedFrom: "bar"},
+		// Arg should not be resolved since we did not declare
+		{name: "random-built-arg-without-declaration",
+			dockerfile:   "FROM ${FOO}",
+			args:         map[string]string{"FOO": "bar"},
+			expectedFrom: ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			n, err := ParseDockerfile(strings.NewReader(tc.dockerfile))
 			if err != nil {
 				t.Fatal(err)
 			}
-			b := NewBuilder(tc.args)
-			from, err := b.From(n)
+			stages, err := NewStages(n, NewBuilder(tc.args))
+			if err != nil {
+				t.Fatal(err)
+			}
+			from, err := stages[0].Builder.From(n)
 			if err != nil {
 				t.Fatal(err)
 			}
