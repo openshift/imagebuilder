@@ -142,7 +142,13 @@ func add(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 	var chmod string
 	last := len(args) - 1
 	dest := makeAbsolute(args[last], b.RunConfig.WorkingDir)
-	userArgs := mergeEnv(envMapAsSlice(b.Args), b.Env)
+	filteredUserArgs := make(map[string]string)
+	for k, v := range b.Args {
+		if _, ok := b.AllowedArgs[k]; ok {
+			filteredUserArgs[k] = v
+		}
+	}
+	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
 	for _, a := range flagArgs {
 		arg, err := ProcessWord(a, userArgs)
 		if err != nil {
@@ -332,7 +338,13 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 	args = handleJSONArgs(args, attributes)
 
 	var mounts []string
-	userArgs := mergeEnv(envMapAsSlice(b.Args), b.Env)
+	filteredUserArgs := make(map[string]string)
+	for k, v := range b.Args {
+		if _, ok := b.AllowedArgs[k]; ok {
+			filteredUserArgs[k] = v
+		}
+	}
+	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
 	for _, a := range flagArgs {
 		arg, err := ProcessWord(a, userArgs)
 		if err != nil {
