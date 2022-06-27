@@ -1,8 +1,13 @@
 FROM centos:7
 COPY archived.txt /archived/
+COPY archived.txt /archived.txt
 COPY archived.tar /archived-tar/
+COPY archived.tar /archived.tar
 COPY archived.tar.gz /archived-gz/
+COPY archived.tar.gz /archived.tar.gz
 COPY archived.tar.bz2 /archived-bz2/
+COPY archived.tar.bz2 /archived.tar.bz2
 COPY archived.tar.xz /archived-xz/
+COPY archived.tar.xz /archived.tar.xz
 COPY archived.txt archived.tar.xz archived.tar.bz2 /archived-mixed/
 COPY archived.txt /archived.tar.xz ./archived.tar.bz2 /archived-mixed-path-variations/
