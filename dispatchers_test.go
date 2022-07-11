@@ -263,7 +263,9 @@ func TestDispatchAddChmodWithEnvironment(t *testing.T) {
 
 func TestDispatchAddChownWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
+	allowedArgs := make(map[string]bool)
 	argsMap["CHOWN_VAL"] = "6731:6731"
+	allowedArgs["CHOWN_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
@@ -271,6 +273,7 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 			Image:      "alpine",
 		},
 		Args: argsMap,
+		AllowedArgs: allowedArgs,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
@@ -296,7 +299,9 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 
 func TestDispatchAddChmodWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
+	allowedArgs := make(map[string]bool)
 	argsMap["CHMOD_VAL"] = "644"
+	allowedArgs["CHMOD_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
@@ -304,6 +309,7 @@ func TestDispatchAddChmodWithArg(t *testing.T) {
 			Image:      "alpine",
 		},
 		Args: argsMap,
+		AllowedArgs: allowedArgs,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
@@ -659,6 +665,63 @@ func TestDispatchRunFlags(t *testing.T) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
 	}
 
+}
+
+func TestDispatchRunFlagsWithArgs(t *testing.T) {
+	argsMap := make(map[string]string)
+	allowedArgs := make(map[string]bool)
+	argsMap["TYPE"] = "bind"
+	allowedArgs["TYPE"] = true
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+		Args: argsMap,
+		AllowedArgs: allowedArgs,
+	}
+
+	flags := []string{"--mount=type=${TYPE},target=/foo"}
+	args := []string{"echo \"stuff\""}
+	original := "RUN --mount=type=${TYPE},target=/foo echo \"stuff\""
+
+	if err := run(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingRuns := []Run{
+		{
+			Shell:  true,
+			Args:   args,
+			Mounts: []string{"type=bind,target=/foo"},
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
+	// Following run should not resolve correctly and type should be equal to "" i.e blank
+	mybuilder = Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+	if err := run(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedBadPendingRuns := []Run{
+		{
+			Shell:  true,
+			Args:   args,
+			Mounts: []string{"type=,target=/foo"},
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedBadPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
 }
 
 func TestDispatchFromFlags(t *testing.T) {
