@@ -272,7 +272,7 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 
@@ -308,7 +308,7 @@ func TestDispatchAddChmodWithArg(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 
@@ -678,22 +678,24 @@ func TestDispatchRunFlagsWithArgs(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "busybox",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 
-	flags := []string{"--mount=type=${TYPE},target=/foo"}
+	flags := []string{"--mount=type=${TYPE},target=/foo", "--security=insecure", "--network=none"}
 	args := []string{"echo \"stuff\""}
-	original := "RUN --mount=type=${TYPE},target=/foo echo \"stuff\""
+	original := "RUN --network=none --security=insecure --mount=type=${TYPE},target=/foo echo \"stuff\""
 
 	if err := run(&mybuilder, args, nil, flags, original); err != nil {
 		t.Errorf("dispatchAdd error: %v", err)
 	}
 	expectedPendingRuns := []Run{
 		{
-			Shell:  true,
-			Args:   args,
-			Mounts: []string{"type=bind,target=/foo"},
+			Shell:    true,
+			Args:     args,
+			Mounts:   []string{"type=bind,target=/foo"},
+			Security: "insecure",
+			Network:  "none",
 		},
 	}
 
@@ -711,13 +713,8 @@ func TestDispatchRunFlagsWithArgs(t *testing.T) {
 	if err := run(&mybuilder, args, nil, flags, original); err != nil {
 		t.Errorf("dispatchAdd error: %v", err)
 	}
-	expectedBadPendingRuns := []Run{
-		{
-			Shell:  true,
-			Args:   args,
-			Mounts: []string{"type=,target=/foo"},
-		},
-	}
+	expectedBadPendingRuns := expectedPendingRuns
+	expectedBadPendingRuns[0].Mounts = []string{"type=,target=/foo"}
 
 	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedBadPendingRuns) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)

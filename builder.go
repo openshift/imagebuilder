@@ -39,6 +39,10 @@ type Run struct {
 	Args  []string
 	// Mounts are mounts specified through the --mount flag inside the Containerfile
 	Mounts []string
+	// Network specifies the network mode to run the container with
+	Network string
+	// Security specifies the security mode to run the container with
+	Security string
 }
 
 type Executor interface {
@@ -79,7 +83,7 @@ func (logExecutor) Copy(excludes []string, copies ...Copy) error {
 }
 
 func (logExecutor) Run(run Run, config docker.Config) error {
-	log.Printf("RUN %v %v %t (%v)", run.Args, run.Mounts, run.Shell, config.Env)
+	log.Printf("RUN %v %v %v %v %t (%v)", run.Args, run.Mounts, run.Network, run.Security, run.Shell, config.Env)
 	return nil
 }
 
@@ -422,6 +426,10 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	for _, run := range runs {
 		config := b.Config()
 		config.Env = step.Env
+		config.NetworkDisabled = (run.Network == "none")
+		if run.Security != "" {
+			config.SecurityOpts = append(config.SecurityOpts, run.Security)
+		}
 		if err := exec.Run(run, *config); err != nil {
 			return err
 		}

@@ -337,13 +337,14 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 
 	args = handleJSONArgs(args, attributes)
 
-	var mounts []string
 	filteredUserArgs := make(map[string]string)
 	for k, v := range b.Args {
 		if _, ok := b.AllowedArgs[k]; ok {
 			filteredUserArgs[k] = v
 		}
 	}
+	run := Run{}
+
 	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
 	for _, a := range flagArgs {
 		arg, err := ProcessWord(a, userArgs)
@@ -353,16 +354,17 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		switch {
 		case strings.HasPrefix(arg, "--mount="):
 			mount := strings.TrimPrefix(arg, "--mount=")
-			mounts = append(mounts, mount)
+			run.Mounts = append(run.Mounts, mount)
+		case strings.HasPrefix(arg, "--network="):
+			run.Network = strings.TrimPrefix(arg, "--network=")
+		case strings.HasPrefix(arg, "--security="):
+			run.Security = strings.TrimPrefix(arg, "--security=")
 		default:
 			return fmt.Errorf("RUN only supports the --mount flag")
 		}
 	}
 
-	run := Run{
-		Args:   args,
-		Mounts: mounts,
-	}
+	run.Args = args
 
 	if !attributes["json"] {
 		run.Shell = true
