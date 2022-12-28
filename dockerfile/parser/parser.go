@@ -15,6 +15,8 @@ import (
 
 	sRegexp "github.com/containers/storage/pkg/regexp"
 	"github.com/containers/storage/pkg/system"
+	buildkitparser "github.com/moby/buildkit/frontend/dockerfile/parser"
+	buildkitshell "github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/openshift/imagebuilder/dockerfile/command"
 )
 
@@ -30,14 +32,15 @@ import (
 // but lucky for us the Dockerfile isn't very complicated. This structure
 // works a little more effectively than a "proper" parse tree for our needs.
 type Node struct {
-	Value      string          // actual content
-	Next       *Node           // the next item in the current sexp
-	Children   []*Node         // the children of this sexp
-	Attributes map[string]bool // special attributes for this node
-	Original   string          // original line used before parsing
-	Flags      []string        // only top Node should have this set
-	StartLine  int             // the line in the original dockerfile where the node begins
-	EndLine    int             // the line in the original dockerfile where the node ends
+	Value      string                   // actual content
+	Next       *Node                    // the next item in the current sexp
+	Children   []*Node                  // the children of this sexp
+	Heredocs   []buildkitparser.Heredoc // extra heredoc content attachments
+	Attributes map[string]bool          // special attributes for this node
+	Original   string                   // original line used before parsing
+	Flags      []string                 // only top Node should have this set
+	StartLine  int                      // the line in the original dockerfile where the node begins
+	EndLine    int                      // the line in the original dockerfile where the node ends
 }
 
 // Dump dumps the AST defined by `node` as a list of sexps.
@@ -70,6 +73,24 @@ func (node *Node) lines(start, end int) {
 	node.EndLine = end
 }
 
+func (node *Node) canContainHeredoc() bool {
+	// check for compound commands, like ONBUILD
+	if ok := heredocCompoundDirectives[strings.ToLower(node.Value)]; ok {
+		if node.Next != nil && len(node.Next.Children) > 0 {
+			node = node.Next.Children[0]
+		}
+	}
+
+	if ok := heredocDirectives[strings.ToLower(node.Value)]; !ok {
+		return false
+	}
+	if isJSON := node.Attributes["json"]; isJSON {
+		return false
+	}
+
+	return true
+}
+
 // AddChild adds a new child node, and updates line information
 func (node *Node) AddChild(child *Node, startLine, endLine int) {
 	child.lines(startLine, endLine)
@@ -85,6 +106,7 @@ var (
 	tokenWhitespace      = sRegexp.Delayed(`[\t\v\f\r ]+`)
 	tokenEscapeCommand   = sRegexp.Delayed(`^#[ \t]*escape[ \t]*=[ \t]*(?P<escapechar>.).*$`)
 	tokenPlatformCommand = sRegexp.Delayed(`^#[ \t]*platform[ \t]*=[ \t]*(?P<platform>.*)$`)
+	reHeredoc            = regexp.MustCompile(`^(\d*)<<(-?)([^<]*)$`)
 	tokenComment         = sRegexp.Delayed(`^#.*$`)
 )
 
@@ -93,6 +115,20 @@ const DefaultEscapeToken = '\\'
 
 // defaultPlatformToken is the platform assumed for the build if not explicitly provided
 var defaultPlatformToken = runtime.GOOS
+
+var (
+	// Directives allowed to contain heredocs
+	heredocDirectives = map[string]bool{
+		command.Add:  true,
+		command.Copy: true,
+		command.Run:  true,
+	}
+
+	// Directives allowed to contain directives containing heredocs
+	heredocCompoundDirectives = map[string]bool{
+		command.Onbuild: true,
+	}
+)
 
 // Directive is the structure used during a build run to hold the state of
 // parsing directives.
@@ -309,6 +345,38 @@ func Parse(rwc io.Reader) (*Result, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if child.canContainHeredoc() {
+			heredocs, err := heredocsFromLine(line)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, heredoc := range heredocs {
+				terminator := []byte(heredoc.Name)
+				terminated := false
+				for scanner.Scan() {
+					bytesRead := scanner.Bytes()
+					currentLine++
+
+					possibleTerminator := trimNewline(bytesRead)
+					if heredoc.Chomp {
+						possibleTerminator = trimLeadingTabs(possibleTerminator)
+					}
+					if bytes.Equal(possibleTerminator, terminator) {
+						terminated = true
+						break
+					}
+					heredoc.Content += string(bytesRead)
+				}
+				if !terminated {
+					return nil, errors.New("unterminated heredoc")
+				}
+
+				child.Heredocs = append(child.Heredocs, heredoc)
+			}
+		}
+
 		root.AddChild(child, startLine, currentLine)
 	}
 
@@ -323,12 +391,42 @@ func Parse(rwc io.Reader) (*Result, error) {
 	}, nil
 }
 
+func heredocsFromLine(line string) ([]buildkitparser.Heredoc, error) {
+	shlex := buildkitshell.NewLex('\\')
+	shlex.RawQuotes = true
+	shlex.RawEscapes = true
+	shlex.SkipUnsetEnv = true
+	words, _ := shlex.ProcessWords(line, []string{})
+
+	var docs []buildkitparser.Heredoc
+	for _, word := range words {
+		heredoc, err := buildkitparser.ParseHeredoc(word)
+		if err != nil {
+			return nil, err
+		}
+		if heredoc != nil {
+			docs = append(docs, *heredoc)
+		}
+	}
+	return docs, nil
+}
+
 func trimComments(src []byte) []byte {
 	return tokenComment.ReplaceAll(src, []byte{})
 }
 
 func trimWhitespace(src []byte) []byte {
 	return bytes.TrimLeftFunc(src, unicode.IsSpace)
+}
+
+func trimLeadingWhitespace(src []byte) []byte {
+	return bytes.TrimLeftFunc(src, unicode.IsSpace)
+}
+func trimLeadingTabs(src []byte) []byte {
+	return bytes.TrimLeft(src, "\t")
+}
+func trimNewline(src []byte) []byte {
+	return bytes.TrimRight(src, "\r\n")
 }
 
 func isEmptyContinuationLine(line []byte) bool {
