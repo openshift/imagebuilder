@@ -8,16 +8,17 @@ import (
 
 	"github.com/containerd/containerd/platforms"
 	docker "github.com/fsouza/go-dockerclient"
+	buildkitparser "github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
 func TestDispatchArgDefaultBuiltins(t *testing.T) {
 	mybuilder := *NewBuilder(make(map[string]string))
 	args := []string{"TARGETPLATFORM"}
-	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg error: %v", err)
 	}
 	args = []string{"BUILDARCH"}
-	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg(2) error: %v", err)
 	}
 	localspec := platforms.DefaultSpec()
@@ -35,7 +36,7 @@ func TestDispatchArgDefaultBuiltins(t *testing.T) {
 func TestDispatchArgTargetPlatform(t *testing.T) {
 	mybuilder := *NewBuilder(make(map[string]string))
 	args := []string{"TARGETPLATFORM=linux/arm/v7"}
-	if err := arg(&mybuilder, args, nil, nil, ""); err != nil {
+	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg error: %v", err)
 	}
 	expectedArgs := []string{
@@ -54,7 +55,7 @@ func TestDispatchArgTargetPlatform(t *testing.T) {
 func TestDispatchArgTargetPlatformBad(t *testing.T) {
 	mybuilder := *NewBuilder(make(map[string]string))
 	args := []string{"TARGETPLATFORM=bozo"}
-	err := arg(&mybuilder, args, nil, nil, "")
+	err := arg(&mybuilder, args, nil, nil, "", nil)
 	expectedErr := errors.New("error parsing TARGETPLATFORM argument")
 	if !reflect.DeepEqual(err, expectedErr) {
 		t.Errorf("Expected %v, got %v\n", expectedErr, err)
@@ -72,8 +73,8 @@ func TestDispatchCopy(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--from=builder"}
 	original := "COPY --from=builder /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -87,6 +88,129 @@ func TestDispatchCopy(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
 		t.Errorf("Expected %v, got %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
+func TestDispatchCopyHeredoc(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+	args := []string{"<<robots.txt <<humans.txt", "/test/"}
+	flagArgs := []string{}
+	original := "COPY <<robots.txt <<humans.txt /test/"
+	heredocs := []buildkitparser.Heredoc{{Name: "robots.txt", FileDescriptor: 0, Chomp: false, Content: "(robots content)"}, {Name: "humans.txt", FileDescriptor: 0, Chomp: false, Content: "(humans content)"}}
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, heredocs); err != nil {
+		t.Errorf("copy error: %v", err)
+	}
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"<<robots.txt <<humans.txt"},
+			Dest:     "/test/", // destination must contain a trailing slash
+			Download: false,
+			Chown:    "",
+			Chmod:    "",
+			Files:    []File{{Name: "robots.txt", Data: "(robots content)"}, {Name: "humans.txt", Data: "(humans content)"}},
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, got %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
+func TestDispatchAddHeredoc(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+
+	args := []string{"<<EOF", "/index.html"}
+	flagArgs := []string{}
+	original := "ADD <<EOF /index.html"
+	heredocs := []buildkitparser.Heredoc{{Name: "EOF", Expand: true, Content: "(your index page goes here)"}}
+	if err := add(&mybuilder, args, nil, flagArgs, original, heredocs); err != nil {
+		t.Errorf("add error: %v", err)
+	}
+
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"<<EOF"},
+			Dest:     "/index.html",
+			Download: true,
+			Files:    []File{{Name: "EOF", Data: "(your index page goes here)"}},
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
+func TestDispatchRunHeredoc(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{}
+	args := []string{"<< EOF"}
+	original := "RUN <<EOF"
+	heredocs := []buildkitparser.Heredoc{{Name: "EOF", Content: "echo \"Hello\" >> /hello\necho \"World\" >> /hello"}}
+
+	if err := run(&mybuilder, args, nil, flags, original, heredocs); err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	expectedPendingRuns := []Run{
+		{
+			Shell: true,
+			Args:  args,
+			Files: []File{{Name: "EOF", Data: "echo \"Hello\" >> /hello\necho \"World\" >> /hello"}},
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
+
+}
+
+func TestDispatchRunHeredocWithCommand(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{}
+	args := []string{"python3 << EOF"}
+	original := "RUN python3 <<EOF"
+	heredocs := []buildkitparser.Heredoc{{Name: "EOF", Content: "with open(\"/hello\", \"w\") as f:\n    print(\"Hello\", file=f)\n    print(\"Something\", file=f)"}}
+
+	if err := run(&mybuilder, args, nil, flags, original, heredocs); err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	expectedPendingRuns := []Run{
+		{
+			Shell: true,
+			Args:  args,
+			Files: []File{{Name: "EOF", Data: "with open(\"/hello\", \"w\") as f:\n    print(\"Hello\", file=f)\n    print(\"Something\", file=f)"}},
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
 	}
 }
 
@@ -111,8 +235,8 @@ func TestDispatchCopyChown(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=1376:1376"}
 	original := "COPY --chown=1376:1376 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -130,8 +254,8 @@ func TestDispatchCopyChown(t *testing.T) {
 	// Test Good chown values
 	flagArgs = []string{"--chown=6731:6731"}
 	original = "COPY --chown=6731:6731 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 	expectedPendingCopies = []Copy{
 		{
@@ -168,7 +292,7 @@ func TestDispatchCopyChmod(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=888"}
 	original := "COPY --chmod=888 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	err := dispatchCopy(&mybuilder, args, nil, flagArgs, original)
+	err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil)
 	chmod := "888"
 	convErr := checkChmodConversion(chmod)
 	if err != nil && convErr != nil && err.Error() != convErr.Error() {
@@ -181,8 +305,8 @@ func TestDispatchCopyChmod(t *testing.T) {
 	// Test Good chmod values
 	flagArgs = []string{"--chmod=777"}
 	original = "COPY --chmod=777 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -212,8 +336,8 @@ func TestDispatchAddChownWithEnvironment(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=${CHOWN_VAL}"}
 	original := "ADD --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -243,8 +367,8 @@ func TestDispatchAddChmodWithEnvironment(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=${CHMOD_VAL}"}
 	original := "ADD --chmod=${CHMOD_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -279,8 +403,8 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=${CHOWN_VAL}"}
 	original := "ADD --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -315,8 +439,8 @@ func TestDispatchAddChmodWithArg(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=${CHMOD_VAL}"}
 	original := "ADD --chmod=${CHMOD_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -346,8 +470,8 @@ func TestDispatchCopyChownWithEnvironment(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=${CHOWN_VAL}"}
 	original := "COPY --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -377,8 +501,8 @@ func TestDispatchCopyChmodWithEnvironment(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=${CHMOD_VAL}"}
 	original := "COPY --chmod=${CHMOD_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -410,8 +534,8 @@ func TestDispatchCopyChownWithArg(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=${CHOWN_VAL}"}
 	original := "COPY --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -443,8 +567,8 @@ func TestDispatchCopyChmodWithArg(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=${CHMOD_VAL}"}
 	original := "COPY --chmod=${CHMOD_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -477,8 +601,8 @@ func TestDispatchCopyChownWithSameArgAndEnv(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=${CHOWN_VAL}"}
 	original := "COPY --chown=${CHOWN_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -511,8 +635,8 @@ func TestDispatchCopyChmodWithSameArgAndEnv(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=${CHMOD_VAL}"}
 	original := "COPY --chmod=${CHMOD_VAL} /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
-	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchCopy error: %v", err)
+	if err := dispatchCopy(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
 	}
 
 	expectedPendingCopies := []Copy{
@@ -550,8 +674,8 @@ func TestDispatchAddChown(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chown=1376:1376"}
 	original := "ADD --chown=1376:1376 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -569,8 +693,8 @@ func TestDispatchAddChown(t *testing.T) {
 	// Test Good chown values
 	flagArgs = []string{"--chown=6731:6731"}
 	original = "ADD --chown=6731:6731 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	if err := add(&mybuilder2, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 	expectedPendingCopies = []Copy{
 		{
@@ -607,7 +731,7 @@ func TestDispatchAddChmod(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--chmod=rwxrwxrwx"}
 	original := "ADD --chmod=rwxrwxrwx /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	err := add(&mybuilder, args, nil, flagArgs, original)
+	err := add(&mybuilder, args, nil, flagArgs, original, nil)
 	chmod := "rwxrwxrwx"
 	convErr := checkChmodConversion(chmod)
 	if err != nil && convErr != nil && err.Error() != convErr.Error() {
@@ -620,8 +744,8 @@ func TestDispatchAddChmod(t *testing.T) {
 	// Test Good chmod values
 	flagArgs = []string{"--chmod=755"}
 	original = "ADD --chmod=755 /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	if err := add(&mybuilder2, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -649,8 +773,8 @@ func TestDispatchAddChecksum(t *testing.T) {
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
 	flagArgs := []string{"--checksum=checksum"}
 	original := "ADD --checksum=checksum /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
-	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := add(&mybuilder, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
 	}
 	expectedPendingCopies := []Copy{
 		{
@@ -679,8 +803,8 @@ func TestDispatchRunFlags(t *testing.T) {
 	args := []string{"echo \"stuff\""}
 	original := "RUN --mount=type=bind,target=/foo echo \"stuff\""
 
-	if err := run(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("run error: %v", err)
 	}
 	expectedPendingRuns := []Run{
 		{
@@ -709,8 +833,8 @@ func TestDispatchNetworkFlags(t *testing.T) {
 	args := []string{"echo \"stuff\""}
 	original := "RUN --network=none echo \"stuff\""
 
-	if err := run(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("run error: %v", err)
 	}
 	expectedPendingRuns := []Run{
 		{
@@ -744,8 +868,8 @@ func TestDispatchRunFlagsWithArgs(t *testing.T) {
 	args := []string{"echo \"stuff\""}
 	original := "RUN --mount=type=${TYPE},target=/foo echo \"stuff\""
 
-	if err := run(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("run error: %v", err)
 	}
 	expectedPendingRuns := []Run{
 		{
@@ -766,8 +890,8 @@ func TestDispatchRunFlagsWithArgs(t *testing.T) {
 			Image:      "busybox",
 		},
 	}
-	if err := run(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("run error: %v", err)
 	}
 	expectedBadPendingRuns := []Run{
 		{
@@ -796,8 +920,8 @@ func TestDispatchFromFlags(t *testing.T) {
 	args := []string{""}
 	original := "FROM --platform=linux/arm64 busybox"
 
-	if err := from(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("from error: %v", err)
 	}
 
 	if mybuilder.Platform != expectedPlatform {
@@ -819,8 +943,8 @@ func TestDispatchFromFlagsAndUseBuiltInArgs(t *testing.T) {
 	args := []string{""}
 	original := "FROM --platform=$BUILDPLATFORM busybox"
 
-	if err := from(&mybuilder, args, nil, flags, original); err != nil {
-		t.Errorf("dispatchAdd error: %v", err)
+	if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("from error: %v", err)
 	}
 
 	if mybuilder.Platform != expectedPlatform {

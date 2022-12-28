@@ -1,0 +1,75 @@
+(from "docker.io/library/python:latest")
+(run(EOF-
+echo "Hello" >> /hello
+echo "World!" >> /hello-0-true-false)
+ "<<EOF")
+(run(EOF-
+echo "hello"
+echo "world"-0-true-true)
+ "<<-EOF")
+(run(heredoc-
+echo "hello"
+echo "world"-0-true-false)
+ "<<heredoc")
+(run(heredoc-
+echo "hello"
+echo "world"-0-true-true)
+ "<<-heredoc")
+(run(heredoc-
+echo "hello"
+echo "world"-0-true-false)
+ "0<<heredoc")
+(run(heredoc-
+echo "hello"
+echo "world"-0-true-true)
+ "0<<-heredoc")
+(run(heredoc-
+echo "hello"
+echo "world"-0-false-true)
+ "0<<-\"heredoc\"")
+(run(heredoc-
+echo "hello"
+echo "world"-0-false-false)
+ "0<<\"heredoc\"")
+(run(EOF-
+this is the file-5-true-false)
+ "5<<EOF cat /proc/self/fd/5 > file.txt")
+(run(FILE1-
+this is the first file-5-true-false)
+(FILE2-
+this is the second file-6-true-false)
+ "cat /proc/self/fd/5 /proc/self/fd/6 5<<FILE1 6<<FILE2 > file.txt")
+(run(FILE1-
+this is the first file-5-true-false)
+(FILE2-
+this is the second file-6-true-false)
+ "cat /proc/self/fd/5 /proc/self/fd/6 5<<FILE1 > file.txt 6<<FILE2")
+(run(EOF-
+this is the file-0-true-false)
+ "cat 0<<EOF > file.txt")
+(run(file-
+this is the first file-5-true-false)
+(FILE-
+this is the second file-6-true-false)
+(File-
+this is the third file-6-true-false)
+ "5<<file cat /proc/self/fd/5 /proc/self/fd/6 6<<FILE | cat /dev/stdin /proc/self/fd/6 6<<File > file.txt")
+(run(EOF-
+with open("/hello", "w") as f:
+    print("Hello", file=f)
+    print("Something", file=f)-0-true-false)
+ "python3 <<EOF")
+(add(EOF-
+(your index page goes here)-0-true-false)
+ "<<EOF" "/index.html")
+(copy(robots.txt-
+(robots content)-0-true-false)
+(humans.txt-
+(humans content)-0-true-false)
+ "<<robots.txt" "<<humans.txt" "/test/")
+(run(heredoc-
+echo "hello"
+echo "world"-0-false-true)
+ "0<<-\"heredoc\"")
+(run "cat index.html")
+(run "cat hello")
