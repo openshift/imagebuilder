@@ -4,8 +4,7 @@ services:
   - docker
 
 go:
-  - "1.17"
-  - "1.18"
+  - "1.19"
 
 before_install:
   - sudo apt-get update -q -y

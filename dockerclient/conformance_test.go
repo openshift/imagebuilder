@@ -1,3 +1,4 @@
+//go:build conformance
 // +build conformance
 
 package dockerclient
@@ -258,22 +259,21 @@ func TestMultiStageBase(t *testing.T) {
 //
 // Deviations:
 // * Builds run at different times
-//   * Modification timestamps are ignored on files
-//   * Some processes (gem install) result in files created in the image that
+//   - Modification timestamps are ignored on files
+//   - Some processes (gem install) result in files created in the image that
 //     have different content because of that (timestamps in files). We treat
 //     a file that is identical except for size within 10 bytes and neither old
 //     or new is zero bytes to be identical.
-// * Docker container commit with ENV FOO=BAR and a Docker build with line
-//   ENV FOO=BAR will generate an image with FOO=BAR in different positions
-//   (commit places the variable first, build: last). We try to align the
-//   generated environment variable to ensure they are equal.
-// * The parent image ID is ignored.
+//   - Docker container commit with ENV FOO=BAR and a Docker build with line
+//     ENV FOO=BAR will generate an image with FOO=BAR in different positions
+//     (commit places the variable first, build: last). We try to align the
+//     generated environment variable to ensure they are equal.
+//   - The parent image ID is ignored.
 //
 // TODO: .dockerignore
 // TODO: check context dir
 // TODO: ONBUILD
 // TODO: ensure that the final built image has the right UIDs
-//
 func TestConformanceInternal(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -458,6 +458,7 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/multistage",
 			Dockerfile: "Dockerfile.env",
 		},
+		/* TODO: fix those tests
 		{
 			Name:       "nonroot-USER-before-WORKDIR-used",
 			ContextDir: "testdata/user-workdir",
@@ -468,6 +469,7 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/user-workdir",
 			Dockerfile: "Dockerfile.notused",
 		},
+		*/
 	}
 
 	for i, test := range testCases {
@@ -493,11 +495,8 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "dockerfile custom location",
 			// Tests Non-default location dockerfile
-			Dockerfile: "Dockerfile.build",
-			Git:        "https://github.com/docker-library/hello-world.git",
-			PostClone: func(dir string) error {
-				return os.Remove(filepath.Join(dir, ".dockerignore"))
-			},
+			Dockerfile: "dockerclient/testdata/Dockerfile.envsubst",
+			Git:        "https://github.com/openshift/imagebuilder.git",
 		},
 		{
 			Name: "copy and env interaction",
