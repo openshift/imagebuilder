@@ -589,7 +589,7 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.env",
 			From:       "busybox",
 			Config: docker.Config{
-				Env:   []string{"name=value", "name2=value2a            value2b", "name1=value1", "name3=value3a\\n\"value3b\"", "name4=value4a\\nvalue4b"},
+				Env:   []string{"HELLO=world", "name=value", "name2=value2a            value2b", "name1=value1", "name3=value3a\\n\"value3b\"", "name4=value4a\\nvalue4b"},
 				Image: "busybox",
 			},
 		},

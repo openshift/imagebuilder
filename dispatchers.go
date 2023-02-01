@@ -80,6 +80,12 @@ func env(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		fmt.Printf("Str1:%v\n", flStr1)
 	*/
 
+	// Support ARG before from and ENV must honor that
+	headingArgs := []string{}
+	for n, v := range b.HeadingArgs {
+		headingArgs = append(headingArgs, n+"="+v)
+	}
+
 	for j := 0; j < len(args); j++ {
 		// name  ==> args[j]
 		// value ==> args[j+1]
@@ -88,6 +94,8 @@ func env(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		b.Env = mergeEnv(b.Env, newVar)
 		j++
 	}
+	b.RunConfig.Env = mergeEnv(b.RunConfig.Env, headingArgs)
+	b.Env = mergeEnv(b.Env, headingArgs)
 
 	return nil
 }
