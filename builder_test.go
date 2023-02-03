@@ -561,7 +561,8 @@ func TestBuilder(t *testing.T) {
 		Unrecognized []Step
 		Config       docker.Config
 		Image        *docker.Image
-		ErrFn        func(err error) bool
+		FromErrFn    func(err error) bool
+		RunErrFn     func(err error) bool
 	}{
 		{
 			Dockerfile: "dockerclient/testdata/dir/Dockerfile",
@@ -665,7 +666,7 @@ func TestBuilder(t *testing.T) {
 			Config: docker.Config{
 				Image: "busybox",
 			},
-			ErrFn: func(err error) bool {
+			RunErrFn: func(err error) bool {
 				return err != nil && strings.Contains(err.Error(), "HEALTHCHECK requires at least one argument")
 			},
 		},
@@ -756,7 +757,7 @@ func TestBuilder(t *testing.T) {
 				Image:      "busybox",
 				WorkingDir: "/tmp",
 			},
-			ErrFn: func(err error) bool {
+			FromErrFn: func(err error) bool {
 				return err != nil && strings.Contains(err.Error(), "multiple FROM statements are not supported")
 			},
 			Runs: []Run{
@@ -774,9 +775,6 @@ func TestBuilder(t *testing.T) {
 			Config: docker.Config{
 				Image: "centos:7",
 				Shell: []string{"/bin/bash", "-xc"},
-			},
-			ErrFn: func(err error) bool {
-				return err != nil && strings.Contains(err.Error(), "multiple FROM statements are not supported")
 			},
 			Runs: []Run{
 				{Shell: true, Args: []string{"env"}},
@@ -796,10 +794,13 @@ func TestBuilder(t *testing.T) {
 			b := NewBuilder(test.Args)
 			from, err := b.From(node)
 			if err != nil {
-				if test.ErrFn == nil || !test.ErrFn(err) {
+				if test.FromErrFn == nil || !test.FromErrFn(err) {
 					t.Errorf("%d: %v", i, err)
 				}
 				return
+			}
+			if test.FromErrFn != nil {
+				t.Errorf("%d: expected an error from From(), didn't get one", i)
 			}
 			if from != test.From {
 				t.Errorf("%d: unexpected FROM: %s", i, from)
@@ -824,10 +825,13 @@ func TestBuilder(t *testing.T) {
 				}
 			}
 			if lastErr != nil {
-				if test.ErrFn == nil || !test.ErrFn(lastErr) {
+				if test.RunErrFn == nil || !test.RunErrFn(lastErr) {
 					t.Errorf("%d: unexpected error: %v", i, lastErr)
 				}
 				return
+			}
+			if test.RunErrFn != nil {
+				t.Errorf("%d: expected an error from Resolve()/Run()(), didn't get one", i)
 			}
 			if !reflect.DeepEqual(test.Copies, e.Copies) {
 				t.Errorf("%d: unexpected copies: %#v", i, e.Copies)
