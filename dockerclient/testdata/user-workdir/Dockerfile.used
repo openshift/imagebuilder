@@ -1,5 +1,7 @@
 FROM alpine
 RUN adduser -D buildtest
 USER buildtest
+WORKDIR /bin/created
+RUN ls -l /bin
 WORKDIR /workdir/created/deep/below
 RUN ls -l /workdir
