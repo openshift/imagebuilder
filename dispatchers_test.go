@@ -272,7 +272,7 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 
@@ -308,7 +308,7 @@ func TestDispatchAddChmodWithArg(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 
@@ -678,7 +678,7 @@ func TestDispatchRunFlagsWithArgs(t *testing.T) {
 			Cmd:        []string{"/bin/sh"},
 			Image:      "busybox",
 		},
-		Args: argsMap,
+		Args:        argsMap,
 		AllowedArgs: allowedArgs,
 	}
 

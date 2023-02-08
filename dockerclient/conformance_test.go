@@ -1,3 +1,4 @@
+//go:build conformance
 // +build conformance
 
 package dockerclient
@@ -35,6 +36,7 @@ var compareLayers = flag.Bool("compare-layers", false, "If true, compare each ge
 
 type conformanceTest struct {
 	Name       string
+	Version    docker.BuilderVersion
 	Dockerfile string
 	Git        string
 	Mounts     []Mount
@@ -258,22 +260,21 @@ func TestMultiStageBase(t *testing.T) {
 //
 // Deviations:
 // * Builds run at different times
-//   * Modification timestamps are ignored on files
-//   * Some processes (gem install) result in files created in the image that
+//   - Modification timestamps are ignored on files
+//   - Some processes (gem install) result in files created in the image that
 //     have different content because of that (timestamps in files). We treat
 //     a file that is identical except for size within 10 bytes and neither old
 //     or new is zero bytes to be identical.
-// * Docker container commit with ENV FOO=BAR and a Docker build with line
-//   ENV FOO=BAR will generate an image with FOO=BAR in different positions
-//   (commit places the variable first, build: last). We try to align the
-//   generated environment variable to ensure they are equal.
-// * The parent image ID is ignored.
+//   - Docker container commit with ENV FOO=BAR and a Docker build with line
+//     ENV FOO=BAR will generate an image with FOO=BAR in different positions
+//     (commit places the variable first, build: last). We try to align the
+//     generated environment variable to ensure they are equal.
+//   - The parent image ID is ignored.
 //
 // TODO: .dockerignore
 // TODO: check context dir
 // TODO: ONBUILD
 // TODO: ensure that the final built image has the right UIDs
-//
 func TestConformanceInternal(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -460,11 +461,13 @@ func TestConformanceInternal(t *testing.T) {
 		},
 		{
 			Name:       "nonroot-USER-before-WORKDIR-used",
+			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/user-workdir",
 			Dockerfile: "Dockerfile.used",
 		},
 		{
 			Name:       "nonroot-USER-before-WORKDIR-notused",
+			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/user-workdir",
 			Dockerfile: "Dockerfile.notused",
 		},
@@ -835,6 +838,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 					OutputStream:        dockerOut,
 					BuildArgs:           args,
 					NoCache:             len(test.Output) > 0,
+					Version:             test.Version,
 				}); err != nil {
 					in.Close()
 					data, _ := ioutil.ReadFile(dockerfilePath)
@@ -899,6 +903,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 			OutputStream:        dockerOut,
 			BuildArgs:           args,
 			NoCache:             len(test.Output) > 0,
+			Version:             test.Version,
 		}); err != nil {
 			in.Close()
 			t.Errorf("%d: unable to build Docker image %q: %v\n%s", i, test.Git, err, dockerOut)

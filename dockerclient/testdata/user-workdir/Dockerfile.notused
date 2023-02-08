@@ -1,4 +1,5 @@
 FROM alpine
 RUN adduser -D buildtest
 USER buildtest
+WORKDIR /bin/created
 WORKDIR /workdir/created/deep/below

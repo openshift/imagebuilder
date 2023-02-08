@@ -745,8 +745,19 @@ func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid,
 		})
 		return err
 	}
-	if err := readPath(path); err != nil {
-		if err = createPath(path); err != nil {
+	var pathsToCreate []string
+	pathToCheck := path
+	for {
+		if err := readPath(pathToCheck); err != nil {
+			pathsToCreate = append([]string{pathToCheck}, pathsToCreate...)
+		}
+		if filepath.Dir(pathToCheck) == pathToCheck {
+			break
+		}
+		pathToCheck = filepath.Dir(pathToCheck)
+	}
+	for _, path := range pathsToCreate {
+		if err := createPath(path); err != nil {
 			return fmt.Errorf("error creating container directory %s: %v", path, err)
 		}
 	}

@@ -15,8 +15,8 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"github.com/openshift/imagebuilder/dockerfile/parser"
 	"github.com/containerd/containerd/platforms"
+	"github.com/openshift/imagebuilder/dockerfile/parser"
 )
 
 func TestVolumeSet(t *testing.T) {
@@ -624,8 +624,8 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.unknown",
 			From:       "busybox",
 			Unrecognized: []Step{
-				Step{Command: "health", Message: "HEALTH ", Original: "HEALTH NONE", Args: []string{""}, Flags: []string{}, Env: []string{}},
-				Step{Command: "unrecognized", Message: "UNRECOGNIZED ", Original: "UNRECOGNIZED", Args: []string{""}, Env: []string{}},
+				{Command: "health", Message: "HEALTH ", Original: "HEALTH NONE", Args: []string{""}, Flags: []string{}, Env: []string{}},
+				{Command: "unrecognized", Message: "UNRECOGNIZED ", Original: "UNRECOGNIZED", Args: []string{""}, Env: []string{}},
 			},
 			Config: docker.Config{
 				Image: "busybox",
@@ -721,8 +721,8 @@ func TestBuilder(t *testing.T) {
 			Config: docker.Config{
 				Env: []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
 				Volumes: map[string]struct{}{
-					"/var":     struct{}{},
-					"/var/www": struct{}{},
+					"/var":     {},
+					"/var/www": {},
 				},
 			},
 			Copies: []Copy{
@@ -737,7 +737,7 @@ func TestBuilder(t *testing.T) {
 			Config: docker.Config{
 				Image: "busybox",
 				Volumes: map[string]struct{}{
-					"/var/www": struct{}{},
+					"/var/www": {},
 				},
 			},
 			Runs: []Run{

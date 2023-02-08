@@ -1,3 +1,4 @@
+//go:build conformance && windows
 // +build conformance,windows
 
 package dockerclient
