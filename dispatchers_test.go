@@ -667,6 +667,35 @@ func TestDispatchRunFlags(t *testing.T) {
 
 }
 
+func TestDispatchNetworkFlags(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--network=none"}
+	args := []string{"echo \"stuff\""}
+	original := "RUN --network=none echo \"stuff\""
+
+	if err := run(&mybuilder, args, nil, flags, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingRuns := []Run{
+		{
+			Shell:  true,
+			Args:   args,
+			Network: "none",
+		},
+	}
+
+	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
+}
+
 func TestDispatchRunFlagsWithArgs(t *testing.T) {
 	argsMap := make(map[string]string)
 	allowedArgs := make(map[string]bool)
