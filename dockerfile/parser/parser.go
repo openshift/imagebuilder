@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode"
 
+	sRegexp "github.com/containers/storage/pkg/regexp"
 	"github.com/containers/storage/pkg/system"
 	"github.com/openshift/imagebuilder/dockerfile/command"
 	"github.com/pkg/errors"
@@ -81,10 +82,10 @@ func (node *Node) AddChild(child *Node, startLine, endLine int) {
 
 var (
 	dispatch             map[string]func(string, *Directive) (*Node, map[string]bool, error)
-	tokenWhitespace      = regexp.MustCompile(`[\t\v\f\r ]+`)
-	tokenEscapeCommand   = regexp.MustCompile(`^#[ \t]*escape[ \t]*=[ \t]*(?P<escapechar>.).*$`)
-	tokenPlatformCommand = regexp.MustCompile(`^#[ \t]*platform[ \t]*=[ \t]*(?P<platform>.*)$`)
-	tokenComment         = regexp.MustCompile(`^#.*$`)
+	tokenWhitespace      = sRegexp.Delayed(`[\t\v\f\r ]+`)
+	tokenEscapeCommand   = sRegexp.Delayed(`^#[ \t]*escape[ \t]*=[ \t]*(?P<escapechar>.).*$`)
+	tokenPlatformCommand = sRegexp.Delayed(`^#[ \t]*platform[ \t]*=[ \t]*(?P<platform>.*)$`)
+	tokenComment         = sRegexp.Delayed(`^#.*$`)
 )
 
 // DefaultEscapeToken is the default escape token
