@@ -4,6 +4,7 @@ package parser
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/containers/storage/pkg/system"
 	"github.com/openshift/imagebuilder/dockerfile/command"
-	"github.com/pkg/errors"
 )
 
 // Node is a structure used to represent a parse tree.

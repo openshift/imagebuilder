@@ -2,6 +2,7 @@ package dockerclient
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/archive"
-	"github.com/pkg/errors"
 )
 
 type testDirectoryCheck map[string]bool
@@ -95,22 +95,6 @@ func (g *archiveGenerator) Reader() io.Reader {
 		pw.CloseWithError(err)
 	}()
 	return pr
-}
-
-// errors.Cause() plus unwrapping go1.13-style wrapped errors
-func unwrapError(err error) error {
-	type unwrapper interface {
-		Unwrap() error
-	}
-	if errors.Cause(err) == nil {
-		return nil
-	}
-	unwrappable, ok := errors.Cause(err).(unwrapper)
-	for ok && err != nil {
-		err = errors.Cause(unwrappable.Unwrap())
-		unwrappable, ok = err.(unwrapper)
-	}
-	return err
 }
 
 func Test_archiveFromFile(t *testing.T) {
@@ -315,8 +299,8 @@ func Test_archiveFromFile(t *testing.T) {
 				found = append(found, h.Name)
 			}
 			closeErr := c.Close()
-			if unwrapError(testCase.closeErr) != unwrapError(closeErr) {
-				t.Fatalf("expected error %q, got %q", unwrapError(testCase.closeErr), unwrapError(closeErr))
+			if !errors.Is(closeErr, testCase.closeErr) {
+				t.Fatalf("expected error %v, got %v", testCase.closeErr, closeErr)
 			}
 			sort.Strings(found)
 			if !reflect.DeepEqual(testCase.expect, found) {
@@ -539,8 +523,8 @@ func Test_archiveFromContainer(t *testing.T) {
 				found = append(found, h.Name)
 			}
 			closeErr := rc.Close()
-			if unwrapError(testCase.closeErr) != unwrapError(closeErr) {
-				t.Fatalf("expected error %q, got %q", unwrapError(testCase.closeErr), unwrapError(closeErr))
+			if !errors.Is(closeErr, testCase.closeErr) {
+				t.Fatalf("expected error %v, got %v", testCase.closeErr, closeErr)
 			}
 			sort.Strings(found)
 			if !reflect.DeepEqual(testCase.expect, found) {
