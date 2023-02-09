@@ -294,6 +294,11 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/copychown",
 		},
 		{
+			Name:       "copy chmod",
+			Version:    docker.BuilderBuildKit,
+			ContextDir: "testdata/copychmod",
+		},
+		{
 			Name:       "copy empty 1",
 			ContextDir: "testdata/copyempty",
 			Dockerfile: "Dockerfile",
