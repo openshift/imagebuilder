@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,12 +19,13 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 
 	"github.com/containerd/containerd/platforms"
+	"github.com/containers/storage/pkg/regexp"
 	"github.com/openshift/imagebuilder/signal"
 	"github.com/openshift/imagebuilder/strslice"
 )
 
 var (
-	obRgex = regexp.MustCompile(`(?i)^\s*ONBUILD\s*`)
+	obRgex = regexp.Delayed(`(?i)^\s*ONBUILD\s*`)
 )
 
 var localspec = platforms.DefaultSpec()
