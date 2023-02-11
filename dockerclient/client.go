@@ -777,6 +777,10 @@ func (e *ClientExecutor) UnrecognizedInstruction(step *imagebuilder.Step) error 
 // the user command into a shell and perform those operations before. Since RUN
 // requires /bin/sh, we can use both 'cd' and 'export'.
 func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
+	if len(run.Mounts) > 0 {
+		return fmt.Errorf("RUN --mount not supported")
+	}
+
 	args := make([]string, len(run.Args))
 	copy(args, run.Args)
 
