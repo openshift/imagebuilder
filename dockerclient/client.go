@@ -1034,6 +1034,19 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		return nil, false, false, nil
 	}
 	for _, c := range copies {
+		var chmod func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error)
+		if c.Chmod != "" {
+			parsed, err := strconv.ParseInt(c.Chmod, 8, 16)
+			if err != nil {
+				return err
+			}
+			chmod = func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error) {
+				mode := h.Mode &^ 0o777
+				mode |= parsed & 0o777
+				h.Mode = mode
+				return nil, false, false, nil
+			}
+		}
 		chownUid, chownGid = -1, -1
 		if c.Chown != "" {
 			var err error
@@ -1088,6 +1101,13 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 					}
 				}
 				filtered, err := transformArchive(r, false, chown)
+				if err != nil {
+					return err
+				}
+				r = filtered
+			}
+			if c.Chmod != "" {
+				filtered, err := transformArchive(r, false, chmod)
 				if err != nil {
 					return err
 				}
