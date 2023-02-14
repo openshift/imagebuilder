@@ -1,0 +1,5 @@
+FROM busybox
+
+ARG FOO
+ENV FOO=${FOO:?}
+LABEL test="$FOO"

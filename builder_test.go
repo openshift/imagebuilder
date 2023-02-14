@@ -700,6 +700,23 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.unset",
+			From:       "busybox",
+			Image: &docker.Image{
+				ID: "busybox2",
+				Config: &docker.Config{
+					Env: []string{},
+				},
+			},
+			RunErrFn: func(err error) bool {
+				return err != nil && strings.Contains(err.Error(), "is not allowed to be unset")
+			},
+			Config: docker.Config{
+				Env:    []string{},
+				Labels: map[string]string{"test": ""},
+			},
+		},
+		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.args",
 			Args:       map[string]string{"BAR": "first"},
 			From:       "busybox",
