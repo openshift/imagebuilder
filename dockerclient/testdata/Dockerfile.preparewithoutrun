@@ -1,0 +1,5 @@
+FROM busybox
+VOLUME "/hello"
+# This grep will fail if hello path does not persists
+RUN ls -a | grep hello
+LABEL ho hey

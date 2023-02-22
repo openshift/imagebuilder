@@ -396,6 +396,10 @@ func TestConformanceInternal(t *testing.T) {
 			Dockerfile: "testdata/Dockerfile.shell",
 		},
 		{
+			Name:       "preparepathwithoutrun",
+			Dockerfile: "testdata/Dockerfile.preparewithoutrun",
+		},
+		{
 			Name:       "args",
 			Dockerfile: "testdata/Dockerfile.args",
 			Args:       map[string]string{"BAR": "first"},

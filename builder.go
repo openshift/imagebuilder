@@ -128,7 +128,13 @@ func (s *VolumeSet) Add(path string) bool {
 	path = strings.TrimSuffix(path, "/")
 	var adjusted []string
 	for _, p := range *s {
-		if p == path || strings.HasPrefix(path, p+"/") {
+		if p == path {
+			// if path is already in the set
+			// pretend it's added and return
+			// true
+			return true
+		}
+		if strings.HasPrefix(path, p+"/") {
 			return false
 		}
 		if strings.HasPrefix(p, path+"/") {

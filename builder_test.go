@@ -28,8 +28,8 @@ func TestVolumeSet(t *testing.T) {
 		uncovered []string
 	}{
 		{
-			inputs:  []string{"/var/lib", "/var"},
-			changed: []bool{true, true},
+			inputs:  []string{"/var/lib", "/var", "/var"},
+			changed: []bool{true, true, true},
 			result:  []string{"/var"},
 
 			covered:   []string{"/var/lib", "/var/", "/var"},
