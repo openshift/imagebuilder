@@ -16,6 +16,19 @@ This package provides various compression algorithms.
 
 # changelog
 
+* Jan 21st, 2023 (v1.15.15)
+	* deflate: Improve level 7-9 by @klauspost in https://github.com/klauspost/compress/pull/739
+	* zstd: Add delta encoding support by @greatroar in https://github.com/klauspost/compress/pull/728
+	* zstd: Various speed improvements by @greatroar https://github.com/klauspost/compress/pull/741 https://github.com/klauspost/compress/pull/734 https://github.com/klauspost/compress/pull/736 https://github.com/klauspost/compress/pull/744 https://github.com/klauspost/compress/pull/743 https://github.com/klauspost/compress/pull/745
+	* gzhttp: Add SuffixETag() and DropETag() options to prevent ETag collisions on compressed responses by @willbicks in https://github.com/klauspost/compress/pull/740
+
+* Jan 3rd, 2023 (v1.15.14)
+
+	* flate: Improve speed in big stateless blocks https://github.com/klauspost/compress/pull/718
+	* zstd: Minor speed tweaks by @greatroar in https://github.com/klauspost/compress/pull/716 https://github.com/klauspost/compress/pull/720
+	* export NoGzipResponseWriter for custom ResponseWriter wrappers by @harshavardhana in https://github.com/klauspost/compress/pull/722
+	* s2: Add example for indexing and existing stream https://github.com/klauspost/compress/pull/723
+
 * Dec 11, 2022 (v1.15.13)
 	* zstd: Add [MaxEncodedSize](https://pkg.go.dev/github.com/klauspost/compress@v1.15.13/zstd#Encoder.MaxEncodedSize) to encoder  https://github.com/klauspost/compress/pull/691
 	* zstd: Various tweaks and improvements https://github.com/klauspost/compress/pull/693 https://github.com/klauspost/compress/pull/695 https://github.com/klauspost/compress/pull/696 https://github.com/klauspost/compress/pull/701 https://github.com/klauspost/compress/pull/702 https://github.com/klauspost/compress/pull/703 https://github.com/klauspost/compress/pull/704 https://github.com/klauspost/compress/pull/705 https://github.com/klauspost/compress/pull/706 https://github.com/klauspost/compress/pull/707 https://github.com/klauspost/compress/pull/708
