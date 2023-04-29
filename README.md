@@ -36,7 +36,7 @@ Future goals include:
 To download and install the library and the binary, set up a Golang build environment and with `GOPATH` set run:
 
 ```
-$ go get -u github.com/openshift/imagebuilder/cmd/imagebuilder
+$ go install github.com/openshift/imagebuilder/cmd/imagebuilder@latest
 ```
 
 The included command line takes one argument, a path to a directory containing a Dockerfile. The `-t` option
