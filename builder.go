@@ -235,7 +235,10 @@ func NewStages(node *parser.Node, b *Builder) (Stages, error) {
 		return stages, err
 	}
 	for i, root := range SplitBy(node, command.From) {
-		name, _ := extractNameFromNode(root.Children[0])
+		name, _, err := b.extractNameFromNode(root.Children[0])
+		if err != nil {
+			return stages, err
+		}
 		if len(name) == 0 {
 			name = strconv.Itoa(i)
 		}
@@ -291,19 +294,44 @@ func (b *Builder) extractHeadingArgsFromNode(node *parser.Node) error {
 	return nil
 }
 
-func extractNameFromNode(node *parser.Node) (string, bool) {
+func (b *Builder) extractNameFromNode(node *parser.Node) (string, bool, error) {
 	if node.Value != command.From {
-		return "", false
+		return "", false, nil
 	}
 	n := node.Next
 	if n == nil || n.Next == nil {
-		return "", false
+		return "", false, nil
 	}
 	n = n.Next
 	if !strings.EqualFold(n.Value, "as") || n.Next == nil || len(n.Next.Value) == 0 {
-		return "", false
+		return "", false, nil
 	}
-	return n.Next.Value, true
+
+	name, err := ProcessWord(n.Next.Value, b.allAvailableArgs())
+	if err != nil {
+		return "", false, fmt.Errorf("could not evaluate stage name: %w", err)
+	}
+	return name, true, nil
+}
+
+func (b *Builder) allAvailableArgs() []string {
+	argStrs := []string{}
+	for n, v := range b.HeadingArgs {
+		argStrs = append(argStrs, n+"="+v)
+	}
+	defaultArgs := envMapAsSlice(builtinBuildArgs)
+	filteredUserArgs := make(map[string]string)
+	for k, v := range b.UserArgs {
+		for _, a := range b.GlobalAllowedArgs {
+			if a == k {
+				filteredUserArgs[k] = v
+			}
+		}
+	}
+	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
+	userArgs = mergeEnv(defaultArgs, userArgs)
+	nameArgs := mergeEnv(argStrs, userArgs)
+	return nameArgs
 }
 
 func (b *Builder) builderForStage(globalArgsList []string) *Builder {

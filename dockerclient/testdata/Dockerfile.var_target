@@ -1,0 +1,10 @@
+ARG TARGET_NAME=mytarget
+
+FROM ubuntu:latest
+RUN touch /1
+
+FROM alpine:latest AS ${TARGET_NAME} 
+RUN touch /2
+
+FROM busybox:latest AS ${TARGET_NAME}2 
+RUN touch /3

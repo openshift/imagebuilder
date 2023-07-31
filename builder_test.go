@@ -104,6 +104,47 @@ func TestByTarget(t *testing.T) {
 	t.Logf("stages2: %#v", stages2)
 }
 
+func TestByVarTarget(t *testing.T) {
+	n, err := ParseFile("dockerclient/testdata/Dockerfile.var_target")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err := NewStages(n, NewBuilder(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 3 {
+		t.Fatalf("expected 3 stages, got %d", len(stages))
+	}
+	t.Logf("stages: %#v", stages)
+
+	stages1, found := stages.ByTarget("mytarget")
+	if !found {
+		t.Fatal("First target not found")
+	}
+	if len(stages1) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages1))
+	}
+	t.Logf("stages1: %#v", stages1)
+
+	stages2, found := stages.ByTarget("mytarget2")
+	if !found {
+		t.Fatal("Second target not found")
+	}
+	if len(stages2) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages2))
+	}
+	t.Logf("stages2: %#v", stages2)
+
+	stages3, found := stages.ThroughTarget("mytarget2")
+	if !found {
+		t.Fatal("stages up to stage 2 not found")
+	}
+	if len(stages3) != 3 {
+		t.Fatalf("expected 3 stages, got %d", len(stages3))
+	}
+}
+
 func TestThroughTarget(t *testing.T) {
 	n, err := ParseFile("dockerclient/testdata/Dockerfile.target")
 	if err != nil {

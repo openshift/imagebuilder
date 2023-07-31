@@ -217,27 +217,10 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 		return fmt.Errorf("FROM requires either one argument, or three: FROM <source> [as <name>]")
 	}
 
-	name := args[0]
-
 	// Support ARG before from
-	argStrs := []string{}
-	for n, v := range b.HeadingArgs {
-		argStrs = append(argStrs, n+"="+v)
-	}
-	defaultArgs := envMapAsSlice(builtinBuildArgs)
-	filteredUserArgs := make(map[string]string)
-	for k, v := range b.UserArgs {
-		for _, a := range b.GlobalAllowedArgs {
-			if a == k {
-				filteredUserArgs[k] = v
-			}
-		}
-	}
-	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
-	userArgs = mergeEnv(defaultArgs, userArgs)
-	nameArgs := mergeEnv(argStrs, userArgs)
-	var err error
-	if name, err = ProcessWord(name, nameArgs); err != nil {
+	allArgs := b.allAvailableArgs()
+	name, err := ProcessWord(args[0], allArgs)
+	if err != nil {
 		return err
 	}
 
@@ -248,7 +231,7 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 		}
 	}
 	for _, a := range flagArgs {
-		arg, err := ProcessWord(a, userArgs)
+		arg, err := ProcessWord(a, allArgs)
 		if err != nil {
 			return err
 		}
