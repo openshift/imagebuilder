@@ -312,6 +312,10 @@ func Parse(rwc io.Reader) (*Result, error) {
 		root.AddChild(child, startLine, currentLine)
 	}
 
+	if scannerErr := scanner.Err(); scannerErr != nil {
+		return nil, scannerErr
+	}
+
 	if len(warnings) > 0 {
 		warnings = append(warnings, "[WARNING]: Empty continuation lines will become errors in a future release.")
 	}
