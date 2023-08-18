@@ -40,6 +40,18 @@ func TestParseErrorCases(t *testing.T) {
 	}
 }
 
+func TestParseFileWithLongText(t *testing.T) {
+	dockerfile := filepath.Join(testDir, "long-text", "Dockerfile")
+	df, err := os.Open(dockerfile)
+	require.NoError(t, err, dockerfile)
+	defer df.Close()
+	result, err := Parse(df)
+	require.NoError(t, err)
+
+	ast := result.AST
+	assert.Len(t, ast.Children, 2)
+}
+
 func TestParseCases(t *testing.T) {
 	for _, dir := range getDirs(t, testDir) {
 		dockerfile := filepath.Join(testDir, dir, "Dockerfile")
