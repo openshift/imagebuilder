@@ -637,6 +637,35 @@ func TestDispatchAddChmod(t *testing.T) {
 	}
 }
 
+func TestDispatchAddChecksum(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "alpine",
+		},
+	}
+
+	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+	flagArgs := []string{"--checksum=checksum"}
+	original := "ADD --checksum=checksum /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
+	if err := add(&mybuilder, args, nil, flagArgs, original); err != nil {
+		t.Errorf("dispatchAdd error: %v", err)
+	}
+	expectedPendingCopies := []Copy{
+		{
+			From:     "",
+			Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+			Dest:     "/root/", // destination must contain a trailing slash
+			Download: true,
+			Checksum: "checksum",
+		},
+	}
+	if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+	}
+}
+
 func TestDispatchRunFlags(t *testing.T) {
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -685,8 +714,8 @@ func TestDispatchNetworkFlags(t *testing.T) {
 	}
 	expectedPendingRuns := []Run{
 		{
-			Shell:  true,
-			Args:   args,
+			Shell:   true,
+			Args:    args,
 			Network: "none",
 		},
 	}
