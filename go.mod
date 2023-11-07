@@ -6,7 +6,7 @@ require (
 	github.com/containerd/containerd v1.7.2
 	github.com/containers/storage v1.46.1
 	github.com/docker/distribution v2.8.2+incompatible
-	github.com/docker/docker v24.0.2+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/stretchr/testify v1.8.4
 	k8s.io/klog v1.0.0
