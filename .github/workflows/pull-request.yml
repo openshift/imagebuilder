@@ -1,0 +1,27 @@
+name: conformance
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  run-conformance-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      name: Check out source tree
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+      name: Install Go
+    - run: go version
+    - run: docker rmi busybox; docker pull busybox
+      name: Pull busybox
+    - run: docker rmi centos:7; docker pull centos:7
+      name: Pull centos:7
+    - run: chmod -R go-w ./dockerclient/testdata
+      name: Fixup permissions
+    - run: make test-conformance
+      name: Run conformance tests
