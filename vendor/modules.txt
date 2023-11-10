@@ -15,6 +15,9 @@ github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
 github.com/containerd/containerd/pkg/userns
 github.com/containerd/containerd/platforms
+# github.com/containerd/typeurl v1.0.2
+## explicit; go 1.13
+github.com/containerd/typeurl
 # github.com/containers/storage v1.46.1
 ## explicit; go 1.18
 github.com/containers/storage/pkg/archive
@@ -74,6 +77,8 @@ github.com/fsouza/go-dockerclient
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
+github.com/gogo/protobuf/sortkeys
+github.com/gogo/protobuf/types
 # github.com/golang/protobuf v1.5.3
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
@@ -96,6 +101,12 @@ github.com/klauspost/compress/zstd/internal/xxhash
 github.com/klauspost/pgzip
 # github.com/kr/text v0.2.0
 ## explicit
+# github.com/moby/buildkit v0.10.6
+## explicit; go 1.17
+github.com/moby/buildkit/frontend/dockerfile/command
+github.com/moby/buildkit/frontend/dockerfile/parser
+github.com/moby/buildkit/frontend/dockerfile/shell
+github.com/moby/buildkit/util/stack
 # github.com/moby/patternmatcher v0.5.0
 ## explicit; go 1.19
 github.com/moby/patternmatcher
