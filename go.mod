@@ -8,7 +8,7 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/fsouza/go-dockerclient v1.9.7
-	github.com/moby/buildkit v0.10.6
+	github.com/moby/buildkit v0.11.4
 	github.com/stretchr/testify v1.8.4
 	k8s.io/klog v1.0.0
 )

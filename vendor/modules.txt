@@ -101,8 +101,8 @@ github.com/klauspost/compress/zstd/internal/xxhash
 github.com/klauspost/pgzip
 # github.com/kr/text v0.2.0
 ## explicit
-# github.com/moby/buildkit v0.10.6
-## explicit; go 1.17
+# github.com/moby/buildkit v0.11.4
+## explicit; go 1.18
 github.com/moby/buildkit/frontend/dockerfile/command
 github.com/moby/buildkit/frontend/dockerfile/parser
 github.com/moby/buildkit/frontend/dockerfile/shell
