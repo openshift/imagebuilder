@@ -931,6 +931,9 @@ func TestDispatchFromFlags(t *testing.T) {
 
 func TestDispatchFromFlagsAndUseBuiltInArgs(t *testing.T) {
 	expectedPlatform := localspec.OS + "/" + localspec.Architecture
+	if localspec.Variant != "" {
+		expectedPlatform += "/" + localspec.Variant
+	}
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
