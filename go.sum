@@ -6,8 +6,8 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/hcsshim v0.12.0-rc.1 h1:Hy+xzYujv7urO5wrgcG58SPMOXNLrj4WCJbySs2XX/A=
 github.com/Microsoft/hcsshim v0.12.0-rc.1/go.mod h1:Y1a1S0QlYp1mBpyvGiuEdOfZqnao+0uX5AWHXQ5NhZU=
-github.com/containerd/containerd v1.7.9 h1:KOhK01szQbM80YfW1H6RZKh85PHGqY/9OcEZ35Je8sc=
-github.com/containerd/containerd v1.7.9/go.mod h1:0/W44LWEYfSHoxBtsHIiNU/duEkgpMokemafHVCpq9Y=
+github.com/containerd/containerd v1.7.11 h1:lfGKw3eU35sjV0aG2eYZTiwFEY1pCzxdzicHP3SZILw=
+github.com/containerd/containerd v1.7.11/go.mod h1:5UluHxHTX2rdvYuZ5OJTC5m/KJNs0Zs9wVoJm9zf5ZE=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
 github.com/containerd/typeurl v1.0.2 h1:Chlt8zIieDbzQFzXzAeBEF92KhExuE4p9p92/QmY7aY=

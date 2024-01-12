@@ -3,7 +3,7 @@ module github.com/openshift/imagebuilder
 go 1.19
 
 require (
-	github.com/containerd/containerd v1.7.9
+	github.com/containerd/containerd v1.7.11
 	github.com/containers/storage v1.51.0
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v24.0.7+incompatible
