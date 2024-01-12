@@ -14,6 +14,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/openshift/imagebuilder/dockerfile/parser"
@@ -102,6 +103,26 @@ func TestByTarget(t *testing.T) {
 		t.Fatalf("expected 1 stages, got %d", len(stages2))
 	}
 	t.Logf("stages2: %#v", stages2)
+
+	stages3, found := stages.ByTarget("1")
+	if !found {
+		t.Fatal("Third target not found")
+	}
+	if len(stages3) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages3))
+	}
+	t.Logf("stages3: %#v", stages3)
+	assert.Equal(t, stages3, stages1)
+
+	stages4, found := stages.ByTarget("2")
+	if !found {
+		t.Fatal("Fourth target not found")
+	}
+	if len(stages4) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages4))
+	}
+	t.Logf("stages4: %#v", stages4)
+	assert.Equal(t, stages4, stages2)
 }
 
 func TestThroughTarget(t *testing.T) {
@@ -135,6 +156,26 @@ func TestThroughTarget(t *testing.T) {
 		t.Fatalf("expected 3 stages, got %d", len(stages2))
 	}
 	t.Logf("stages2: %#v", stages2)
+
+	stages3, found := stages.ThroughTarget("1")
+	if !found {
+		t.Fatal("Third target not found")
+	}
+	if len(stages3) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages3))
+	}
+	t.Logf("stages3: %#v", stages3)
+	assert.Equal(t, stages3, stages1)
+
+	stages4, found := stages.ThroughTarget("2")
+	if !found {
+		t.Fatal("Fourth target not found")
+	}
+	if len(stages4) != 3 {
+		t.Fatalf("expected 3 stages, got %d", len(stages4))
+	}
+	t.Logf("stages4: %#v", stages4)
+	assert.Equal(t, stages4, stages2)
 }
 
 func TestMultiStageParse(t *testing.T) {
