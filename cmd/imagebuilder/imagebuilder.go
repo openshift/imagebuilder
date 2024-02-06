@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/reference"
-	dockertypes "github.com/docker/docker/api/types"
+	dockerregistrytypes "github.com/docker/docker/api/types/registry"
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/klog"
 
@@ -96,11 +96,11 @@ func main() {
 		klog.V(4).Infof("No authentication secrets found")
 	}
 
-	options.AuthFn = func(name string) ([]dockertypes.AuthConfig, bool) {
+	options.AuthFn = func(name string) ([]dockerregistrytypes.AuthConfig, bool) {
 		if authConfigurations != nil {
 			if authConfig, ok := authConfigurations.Configs[name]; ok {
 				klog.V(4).Infof("Found authentication secret for registry %q", name)
-				return []dockertypes.AuthConfig{{
+				return []dockerregistrytypes.AuthConfig{{
 					Username:      authConfig.Username,
 					Password:      authConfig.Password,
 					Email:         authConfig.Email,
@@ -111,7 +111,7 @@ func main() {
 				domain := reference.Domain(named)
 				if authConfig, ok := authConfigurations.Configs[domain]; ok {
 					klog.V(4).Infof("Found authentication secret for registry %q", domain)
-					return []dockertypes.AuthConfig{{
+					return []dockerregistrytypes.AuthConfig{{
 						Username:      authConfig.Username,
 						Password:      authConfig.Password,
 						Email:         authConfig.Email,
@@ -119,14 +119,14 @@ func main() {
 					}}, true
 				}
 				if domain == "docker.io" || strings.HasSuffix(domain, ".docker.io") {
-					var auths []dockertypes.AuthConfig
+					var auths []dockerregistrytypes.AuthConfig
 					for _, aka := range []string{"docker.io", "index.docker.io", "https://index.docker.io/v1/"} {
 						if aka == domain {
 							continue
 						}
 						if authConfig, ok := authConfigurations.Configs[aka]; ok {
 							klog.V(4).Infof("Found authentication secret for registry %q", aka)
-							auths = append(auths, dockertypes.AuthConfig{
+							auths = append(auths, dockerregistrytypes.AuthConfig{
 								Username:      authConfig.Username,
 								Password:      authConfig.Password,
 								Email:         authConfig.Email,
