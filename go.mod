@@ -6,7 +6,7 @@ require (
 	github.com/containerd/containerd v1.7.13
 	github.com/containers/storage v1.52.0
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v25.0.1+incompatible
+	github.com/docker/docker v26.0.0+incompatible
 	github.com/fsouza/go-dockerclient v1.10.1
 	github.com/moby/buildkit v0.12.5
 	github.com/sirupsen/logrus v1.9.3
@@ -28,10 +28,11 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/klauspost/compress v1.17.5 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
@@ -57,7 +58,7 @@ require (
 	golang.org/x/tools v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/grpc v1.61.0 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
