@@ -6,4 +6,5 @@
 (healthcheck "CMD")
 (healthcheck "CMD" "a b")
 (healthcheck ["--timeout=3s"] "CMD" "foo")
+(healthcheck ["--start-interval=5s" "--interval=5s" "--timeout=3s" "--retries=3"] "CMD" "/app/check.sh --quiet")
 (healthcheck "CONNECT" "TCP 7000")
