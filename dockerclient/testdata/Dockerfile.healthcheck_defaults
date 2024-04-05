@@ -1,0 +1,3 @@
+FROM debian
+CMD /app/main.sh
+HEALTHCHECK CMD /app/check.sh --quiet

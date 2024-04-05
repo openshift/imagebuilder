@@ -476,6 +476,14 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/user-workdir",
 			Dockerfile: "Dockerfile.notused",
 		},
+		{
+			Name:       "healthcheck with defaults",
+			Dockerfile: "testdata/Dockerfile.healthcheck_defaults",
+		},
+		{
+			Name:       "healthcheck",
+			Dockerfile: "testdata/Dockerfile.healthcheck",
+		},
 	}
 
 	for i, test := range testCases {

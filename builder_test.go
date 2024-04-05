@@ -728,6 +728,22 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			Dockerfile: "dockerclient/testdata/Dockerfile.healthcheck_defaults",
+			From:       "debian",
+			Config: docker.Config{
+				Image: "debian",
+				Cmd:   []string{"/bin/sh", "-c", "/app/main.sh"},
+				Healthcheck: &docker.HealthConfig{
+					StartPeriod:   0 * time.Second,
+					Interval:      0 * time.Second,
+					Timeout:       0 * time.Second,
+					StartInterval: 0 * time.Second,
+					Retries:       0,
+					Test:          []string{"CMD-SHELL", "/app/check.sh --quiet"},
+				},
+			},
+		},
+		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.envsubst",
 			From:       "busybox",
 			Image: &docker.Image{
