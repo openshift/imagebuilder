@@ -484,6 +484,14 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "healthcheck",
 			Dockerfile: "testdata/Dockerfile.healthcheck",
 		},
+		{
+			Name:       "workdir-with-trailing-path-separator",
+			Dockerfile: "testdata/workdir/Dockerfile.trailing",
+		},
+		{
+			Name:       "workdir-without-trailing-path-separator",
+			Dockerfile: "testdata/workdir/Dockerfile.notrailing",
+		},
 	}
 
 	for i, test := range testCases {
@@ -518,7 +526,7 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "16/alpine3.18",
+			ContextDir: "16/alpine3.20",
 			Dockerfile: "Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{
