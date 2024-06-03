@@ -1,0 +1,3 @@
+FROM busybox
+USER daemon
+WORKDIR /tmp/
