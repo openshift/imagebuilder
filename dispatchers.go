@@ -308,7 +308,7 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 		}
 	}
 	for _, a := range flagArgs {
-		arg, err := ProcessWord(a, userArgs)
+		arg, err := ProcessWord(a, nameArgs)
 		if err != nil {
 			return err
 		}

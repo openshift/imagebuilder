@@ -954,3 +954,29 @@ func TestDispatchFromFlagsAndUseBuiltInArgs(t *testing.T) {
 		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
 	}
 }
+
+func TestDispatchFromFlagsAndUseHeadingArgs(t *testing.T) {
+	expectedPlatform := "foo/bar"
+	mybuilder := Builder{
+		HeadingArgs: map[string]string{
+			"TMP": expectedPlatform,
+		},
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--platform=$TMP"}
+	args := []string{""}
+	original := "FROM --platform=$TMP busybox"
+
+	if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("from error: %v", err)
+	}
+
+	if mybuilder.Platform != expectedPlatform {
+		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
+	}
+}
