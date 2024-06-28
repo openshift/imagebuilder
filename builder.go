@@ -410,13 +410,18 @@ type Builder struct {
 	// Raw platform string specified with `FROM --platform` of the stage
 	// It's up to the implementation or client to parse and use this field
 	Platform string
+
+	// Overrides for TARGET... and BUILD... values. TARGET... values are
+	// typically only necessary if the builder's target platform is not the
+	// same as the build platform.
+	BuiltinBuildArgs map[string]string
 }
 
 func NewBuilder(args map[string]string) *Builder {
 	return newBuilderWithGlobalAllowedArgs(args, []string{})
 }
 
-func newBuilderWithGlobalAllowedArgs(args map[string]string, globalallowedargs []string) *Builder {
+func newBuilderWithGlobalAllowedArgs(args map[string]string, allowedArgs []string) *Builder {
 	allowed := make(map[string]bool)
 	for k, v := range builtinAllowedBuildArgs {
 		allowed[k] = v
@@ -427,12 +432,16 @@ func newBuilderWithGlobalAllowedArgs(args map[string]string, globalallowedargs [
 		userArgs[k] = v
 		initialArgs[k] = v
 	}
+	var globalAllowedArgs []string
+	if len(allowedArgs) > 0 {
+		globalAllowedArgs = append([]string{}, allowedArgs...)
+	}
 	return &Builder{
 		Args:              initialArgs,
 		UserArgs:          userArgs,
 		HeadingArgs:       make(map[string]string),
 		AllowedArgs:       allowed,
-		GlobalAllowedArgs: globalallowedargs,
+		GlobalAllowedArgs: globalAllowedArgs,
 	}
 }
 

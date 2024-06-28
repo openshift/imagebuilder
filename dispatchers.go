@@ -333,7 +333,7 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 	for n, v := range b.HeadingArgs {
 		argStrs = append(argStrs, n+"="+v)
 	}
-	defaultArgs := envMapAsSlice(builtinBuildArgs)
+	defaultArgs := mergeEnv(envMapAsSlice(builtinBuildArgs), envMapAsSlice(b.BuiltinBuildArgs))
 	filteredUserArgs := make(map[string]string)
 	for k, v := range b.UserArgs {
 		for _, a := range b.GlobalAllowedArgs {
@@ -741,6 +741,10 @@ func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		hasDefault bool
 	)
 
+	if b.BuiltinBuildArgs == nil {
+		b.BuiltinBuildArgs = make(map[string]string)
+	}
+
 	for _, argument := range args {
 		arg := argument
 		// 'arg' can just be a name or name-value pair. Note that this is different
@@ -769,6 +773,10 @@ func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 					b.Args["TARGETPLATFORM"] = b.Args["TARGETPLATFORM"] + "/" + p.Variant
 				}
 			}
+		} else if val, ok := b.BuiltinBuildArgs[arg]; ok {
+			name = arg
+			value = val
+			hasDefault = true
 		} else if val, ok := builtinBuildArgs[arg]; ok {
 			name = arg
 			value = val
