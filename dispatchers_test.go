@@ -423,8 +423,8 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 
 func TestDispatchAddChmodWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
-	allowedArgs := make(map[string]bool)
 	argsMap["CHMOD_VAL"] = "644"
+	allowedArgs := make(map[string]bool)
 	allowedArgs["CHMOD_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -522,13 +522,16 @@ func TestDispatchCopyChmodWithEnvironment(t *testing.T) {
 func TestDispatchCopyChownWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
 	argsMap["CHOWN_VAL"] = "6731:6731"
+	allowedArgs := make(map[string]bool)
+	allowedArgs["CHOWN_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
+		AllowedArgs: allowedArgs,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
@@ -555,13 +558,16 @@ func TestDispatchCopyChownWithArg(t *testing.T) {
 func TestDispatchCopyChmodWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
 	argsMap["CHMOD_VAL"] = "444"
+	allowedArgsMap := make(map[string]bool)
+	allowedArgsMap["CHMOD_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
+		AllowedArgs: allowedArgsMap,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
