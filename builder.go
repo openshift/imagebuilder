@@ -385,22 +385,34 @@ func (b *Builder) builderForStage(globalArgsList []string) *Builder {
 type Builder struct {
 	RunConfig docker.Config
 
-	Env         []string
-	Args        map[string]string
-	HeadingArgs map[string]string
-	UserArgs    map[string]string
-	CmdSet      bool
-	Author      string
-	// Certain instructions like `FROM` will need to use
-	// `ARG` decalred before or not in this stage hence
-	// while processing instruction like `FROM ${SOME_ARG}`
-	// we will make sure to verify if they are declared any
-	// where in containerfile or not.
-	GlobalAllowedArgs []string
+	Env []string
 
+	// Args contains values originally given to NewBuilder() or set due to
+	// ARG instructions in a stage, either with a default value provided,
+	// or with a default inherited from an ARG instruction in the header
+	Args map[string]string
+	// HeadingArgs contains the values for ARG instructions in the
+	// Dockerfile which occurred before the first FROM instruction, either
+	// with a default value provided as part of the ARG instruction, or
+	// expecting a value to be supplied in UserArgs via NewBuilder().
+	HeadingArgs map[string]string
+	// UserArgs includes a copy of the values that were passed to
+	// NewBuilder(), unmodified.
+	UserArgs map[string]string
+
+	CmdSet bool
+	Author string
+
+	// GlobalAllowedArgs are args which should be resolvable in a FROM
+	// instruction, either built-in and always available, or introduced by
+	// an ARG instruction in the header.
+	GlobalAllowedArgs []string
+	// AllowedArgs are args which should be resolvable in this stage,
+	// having been introduced by a previous ARG instruction in this stage.
 	AllowedArgs map[string]bool
-	Volumes     VolumeSet
-	Excludes    []string
+
+	Volumes  VolumeSet
+	Excludes []string
 
 	PendingVolumes VolumeSet
 	PendingRuns    []Run
