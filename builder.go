@@ -288,19 +288,12 @@ type Stage struct {
 
 func NewStages(node *parser.Node, b *Builder) (Stages, error) {
 	var stages Stages
-	var allDeclaredArgs []string
-	for _, root := range SplitBy(node, command.Arg) {
-		argNode := root.Children[0]
-		if argNode.Value == command.Arg {
-			// extract declared variable
-			s := strings.SplitN(argNode.Original, " ", 2)
-			if len(s) == 2 && (strings.ToLower(s[0]) == command.Arg) {
-				allDeclaredArgs = append(allDeclaredArgs, s[1])
-			}
-		}
-	}
+	var headingArgs []string
 	if err := b.extractHeadingArgsFromNode(node); err != nil {
 		return stages, err
+	}
+	for k := range b.HeadingArgs {
+		headingArgs = append(headingArgs, k)
 	}
 	for i, root := range SplitBy(node, command.From) {
 		name, _ := extractNameFromNode(root.Children[0])
@@ -310,7 +303,7 @@ func NewStages(node *parser.Node, b *Builder) (Stages, error) {
 		stages = append(stages, Stage{
 			Position: i,
 			Name:     name,
-			Builder:  b.builderForStage(allDeclaredArgs),
+			Builder:  b.builderForStage(headingArgs),
 			Node:     root,
 		})
 	}
