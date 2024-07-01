@@ -83,13 +83,12 @@ func env(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		fmt.Printf("Str1:%v\n", flStr1)
 	*/
 
-	for j := 0; j < len(args); j++ {
+	for j := 0; j+1 < len(args); j += 2 {
 		// name  ==> args[j]
 		// value ==> args[j+1]
 		newVar := []string{args[j] + "=" + args[j+1]}
 		b.RunConfig.Env = mergeEnv(b.RunConfig.Env, newVar)
 		b.Env = mergeEnv(b.Env, newVar)
-		j++
 	}
 
 	return nil
