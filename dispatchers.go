@@ -350,9 +350,9 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 	}
 	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
 	userArgs = mergeEnv(defaultArgs, userArgs)
-	nameArgs := mergeEnv(argStrs, userArgs)
+	userArgs = mergeEnv(argStrs, userArgs)
 	var err error
-	if name, err = ProcessWord(name, nameArgs); err != nil {
+	if name, err = ProcessWord(name, userArgs); err != nil {
 		return err
 	}
 
@@ -363,7 +363,7 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 		}
 	}
 	for _, a := range flagArgs {
-		arg, err := ProcessWord(a, nameArgs)
+		arg, err := ProcessWord(a, userArgs)
 		if err != nil {
 			return err
 		}
