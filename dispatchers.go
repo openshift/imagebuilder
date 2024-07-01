@@ -18,6 +18,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containers/storage/pkg/regexp"
 	"github.com/openshift/imagebuilder/signal"
@@ -732,78 +733,62 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, flagArgs
 	return nil
 }
 
-var targetArgs = []string{"TARGETOS", "TARGETARCH", "TARGETVARIANT"}
-
 // ARG name[=value]
 //
 // Adds the variable foo to the trusted list of variables that can be passed
 // to builder using the --build-arg flag for expansion/subsitution or passing to 'run'.
 // Dockerfile author may optionally set a default value of this variable.
 func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []string, original string, heredocs []buildkitparser.Heredoc) error {
-	var (
-		name       string
-		value      string
-		hasDefault bool
-	)
-
-	if b.BuiltinBuildArgs == nil {
-		b.BuiltinBuildArgs = make(map[string]string)
-	}
-
 	for _, argument := range args {
+		var (
+			name         string
+			defaultValue string
+			haveDefault  bool
+		)
 		arg := argument
 		// 'arg' can just be a name or name-value pair. Note that this is different
 		// from 'env' that handles the split of name and value at the parser level.
 		// The reason for doing it differently for 'arg' is that we support just
-		// defining an arg and not assign it a value (while 'env' always expects a
+		// defining an arg without assigning it a value (while 'env' always expects a
 		// name-value pair). If possible, it will be good to harmonize the two.
-		if strings.Contains(arg, "=") {
-			parts := strings.SplitN(arg, "=", 2)
-			name = parts[0]
-			value = parts[1]
-			hasDefault = true
-			if name == "TARGETPLATFORM" {
-				p, err := platforms.Parse(value)
-				if err != nil {
-					return fmt.Errorf("error parsing TARGETPLATFORM argument")
-				}
-				for _, val := range targetArgs {
-					b.AllowedArgs[val] = true
-				}
-				b.Args["TARGETPLATFORM"] = p.OS + "/" + p.Architecture
-				b.Args["TARGETOS"] = p.OS
-				b.Args["TARGETARCH"] = p.Architecture
-				b.Args["TARGETVARIANT"] = p.Variant
-				if p.Variant != "" {
-					b.Args["TARGETPLATFORM"] = b.Args["TARGETPLATFORM"] + "/" + p.Variant
-				}
-			}
-		} else if val, ok := b.BuiltinBuildArgs[arg]; ok {
-			name = arg
-			value = val
-			hasDefault = true
-		} else if val, ok := builtinBuildArgs[arg]; ok {
-			name = arg
-			value = val
-			hasDefault = true
-		} else {
-			name = arg
-			hasDefault = false
-		}
+		name, defaultValue, haveDefault = strings.Cut(arg, "=")
+
 		// add the arg to allowed list of build-time args from this step on.
 		b.AllowedArgs[name] = true
 
-		// If there is still no default value, a value can be assigned from the heading args
-		if val, ok := b.HeadingArgs[name]; ok && !hasDefault {
-			b.Args[name] = val
+		// If the stage introduces one of the predefined args, add the
+		// predefined value to the list of values known in this stage
+		if value, defined := builtinBuildArgs[name]; defined {
+			if haveDefault {
+				return fmt.Errorf("attempted to redefine %q: %w", name, errdefs.ErrInvalidArgument)
+			}
+			if b.BuiltinBuildArgs == nil {
+				b.BuiltinBuildArgs = make(map[string]string)
+			}
+			// N.B.: we're only consulting BuiltinBuildArgs for
+			// values that correspond to keys in builtinBuildArgs,
+			// which keeps the caller from using it to sneak in
+			// arbitrary ARG values
+			if builderValue, builderDefined := b.BuiltinBuildArgs[name]; builderDefined {
+				b.Args[name] = builderValue
+			} else {
+				b.Args[name] = value
+			}
+			continue
 		}
 
-		// If there is a default value associated with this arg then add it to the
-		// b.buildArgs, later default values for the same arg override earlier ones.
-		// The args passed to builder (UserArgs) override the default value of 'arg'
-		// Don't add them here as they were already set in NewBuilder.
-		if _, ok := b.UserArgs[name]; !ok && hasDefault {
-			b.Args[name] = value
+		// If there is still no default value, check for a default value from the heading args
+		if !haveDefault {
+			defaultValue, haveDefault = b.HeadingArgs[name]
+		}
+
+		// If there is a default value provided for this arg, and the user didn't supply
+		// a value, then set the default value in b.Args.  Later defaults given for the
+		// same arg override earlier ones.  The args passed to the builder (UserArgs) override
+		// any default values of 'arg', so don't set them here as they were already set
+		// in NewBuilder().
+		if _, setByUser := b.UserArgs[name]; !setByUser && haveDefault {
+			b.Args[name] = defaultValue
 		}
 	}
 
