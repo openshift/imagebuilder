@@ -419,7 +419,7 @@ type Builder struct {
 	// Overrides for TARGET... and BUILD... values. TARGET... values are
 	// typically only necessary if the builder's target platform is not the
 	// same as the build platform.
-	BuiltinBuildArgs map[string]string
+	BuiltinArgDefaults map[string]string
 }
 
 func NewBuilder(args map[string]string) *Builder {

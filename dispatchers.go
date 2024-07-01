@@ -36,7 +36,7 @@ var (
 var localspec = platforms.DefaultSpec()
 
 // https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope
-var builtinBuildArgs = map[string]string{
+var builtinArgDefaults = map[string]string{
 	"TARGETPLATFORM": localspec.OS + "/" + localspec.Architecture,
 	"TARGETOS":       localspec.OS,
 	"TARGETARCH":     localspec.Architecture,
@@ -49,8 +49,8 @@ var builtinBuildArgs = map[string]string{
 
 func init() {
 	if localspec.Variant != "" {
-		builtinBuildArgs["TARGETPLATFORM"] = builtinBuildArgs["TARGETPLATFORM"] + "/" + localspec.Variant
-		builtinBuildArgs["BUILDPLATFORM"] = builtinBuildArgs["BUILDPLATFORM"] + "/" + localspec.Variant
+		builtinArgDefaults["TARGETPLATFORM"] = builtinArgDefaults["TARGETPLATFORM"] + "/" + localspec.Variant
+		builtinArgDefaults["BUILDPLATFORM"] = builtinArgDefaults["BUILDPLATFORM"] + "/" + localspec.Variant
 	}
 }
 
@@ -329,17 +329,12 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 	case len(args) == 3 && len(args[0]) > 0 && strings.EqualFold(args[1], "as") && len(args[2]) > 0:
 
 	default:
-		return fmt.Errorf("FROM requires either one argument, or three: FROM <source> [as <name>]")
+		return fmt.Errorf("FROM requires either one argument, or three: FROM <source> [AS <name>]")
 	}
 
 	name := args[0]
 
-	// Support ARG before from
-	argStrs := []string{}
-	for n, v := range b.HeadingArgs {
-		argStrs = append(argStrs, n+"="+v)
-	}
-	defaultArgs := mergeEnv(envMapAsSlice(builtinBuildArgs), envMapAsSlice(b.BuiltinBuildArgs))
+	// Support ARG before FROM
 	filteredUserArgs := make(map[string]string)
 	for k, v := range b.UserArgs {
 		for _, a := range b.GlobalAllowedArgs {
@@ -349,8 +344,9 @@ func from(b *Builder, args []string, attributes map[string]bool, flagArgs []stri
 		}
 	}
 	userArgs := mergeEnv(envMapAsSlice(filteredUserArgs), b.Env)
-	userArgs = mergeEnv(defaultArgs, userArgs)
-	userArgs = mergeEnv(argStrs, userArgs)
+	userArgs = mergeEnv(envMapAsSlice(b.BuiltinArgDefaults), userArgs)
+	userArgs = mergeEnv(envMapAsSlice(builtinArgDefaults), userArgs)
+	userArgs = mergeEnv(envMapAsSlice(b.HeadingArgs), userArgs)
 	var err error
 	if name, err = ProcessWord(name, userArgs); err != nil {
 		return err
@@ -758,18 +754,18 @@ func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 
 		// If the stage introduces one of the predefined args, add the
 		// predefined value to the list of values known in this stage
-		if value, defined := builtinBuildArgs[name]; defined {
+		if value, defined := builtinArgDefaults[name]; defined {
 			if haveDefault {
 				return fmt.Errorf("attempted to redefine %q: %w", name, errdefs.ErrInvalidArgument)
 			}
-			if b.BuiltinBuildArgs == nil {
-				b.BuiltinBuildArgs = make(map[string]string)
+			if b.BuiltinArgDefaults == nil {
+				b.BuiltinArgDefaults = make(map[string]string)
 			}
-			// N.B.: we're only consulting BuiltinBuildArgs for
-			// values that correspond to keys in builtinBuildArgs,
-			// which keeps the caller from using it to sneak in
-			// arbitrary ARG values
-			if builderValue, builderDefined := b.BuiltinBuildArgs[name]; builderDefined {
+			// N.B.: we're only consulting b.BuiltinArgDefaults for
+			// values that correspond to keys in
+			// builtinArgDefaults, which keeps the caller from
+			// using it to sneak in arbitrary ARG values
+			if builderValue, builderDefined := b.BuiltinArgDefaults[name]; builderDefined {
 				b.Args[name] = builderValue
 			} else {
 				b.Args[name] = value
