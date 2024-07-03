@@ -492,6 +492,12 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "workdir-without-trailing-path-separator",
 			Dockerfile: "testdata/workdir/Dockerfile.notrailing",
 		},
+		{
+			Name:       "builtins",
+			Version:    docker.BuilderBuildKit,
+			ContextDir: "testdata/builtins",
+			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image"},
+		},
 	}
 
 	for i, test := range testCases {
