@@ -498,6 +498,11 @@ func TestConformanceInternal(t *testing.T) {
 			ContextDir: "testdata/builtins",
 			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image"},
 		},
+		{
+			Name:       "header-builtin",
+			Version:    docker.BuilderBuildKit,
+			ContextDir: "testdata/header-builtin",
+		},
 	}
 
 	for i, test := range testCases {
