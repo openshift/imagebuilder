@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/docker/distribution/reference"
 	dockerregistrytypes "github.com/docker/docker/api/types/registry"
@@ -90,10 +92,14 @@ func main() {
 	options.Out, options.ErrOut = os.Stdout, os.Stderr
 	authConfigurations, err := docker.NewAuthConfigurationsFromDockerCfg()
 	if err != nil {
-		log.Fatalf("reading authentication configurations: %v", err)
+		if errors.Is(err, syscall.ENOENT) {
+			klog.Warning("No docker configuration found")
+		} else {
+			log.Fatalf("reading authentication configurations: %v", err)
+		}
 	}
 	if authConfigurations == nil {
-		klog.V(4).Infof("No authentication secrets found")
+		klog.V(4).Info("No authentication secrets found")
 	}
 
 	options.AuthFn = func(name string) ([]dockerregistrytypes.AuthConfig, bool) {
