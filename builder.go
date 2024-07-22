@@ -368,10 +368,7 @@ func extractNameFromNode(node *parser.Node) (string, bool) {
 }
 
 func (b *Builder) builderForStage(globalArgsList []string) *Builder {
-	stageBuilder := newBuilderWithGlobalAllowedArgs(b.UserArgs, globalArgsList)
-	for k, v := range b.HeadingArgs {
-		stageBuilder.HeadingArgs[k] = v
-	}
+	stageBuilder := newBuilderWithGlobalAllowedArgs(b.UserArgs, b.HeadingArgs, b.BuiltinArgDefaults, globalArgsList)
 	return stageBuilder
 }
 
@@ -423,10 +420,10 @@ type Builder struct {
 }
 
 func NewBuilder(args map[string]string) *Builder {
-	return newBuilderWithGlobalAllowedArgs(args, []string{})
+	return newBuilderWithGlobalAllowedArgs(args, nil, nil, []string{})
 }
 
-func newBuilderWithGlobalAllowedArgs(args map[string]string, allowedArgs []string) *Builder {
+func newBuilderWithGlobalAllowedArgs(args, headingArgs, userBuiltinArgDefaults map[string]string, globalAllowedArgs []string) *Builder {
 	allowed := make(map[string]bool)
 	for k, v := range builtinAllowedBuildArgs {
 		allowed[k] = v
@@ -437,16 +434,28 @@ func newBuilderWithGlobalAllowedArgs(args map[string]string, allowedArgs []strin
 		userArgs[k] = v
 		initialArgs[k] = v
 	}
-	var globalAllowedArgs []string
-	if len(allowedArgs) > 0 {
-		globalAllowedArgs = append([]string{}, allowedArgs...)
+	var copiedGlobalAllowedArgs []string
+	if len(globalAllowedArgs) > 0 {
+		copiedGlobalAllowedArgs = append([]string{}, globalAllowedArgs...)
+	}
+	copiedHeadingArgs := make(map[string]string)
+	for k, v := range headingArgs {
+		copiedHeadingArgs[k] = v
+	}
+	copiedBuiltinArgDefaults := make(map[string]string)
+	for k, v := range builtinArgDefaults {
+		copiedBuiltinArgDefaults[k] = v
+	}
+	for k, v := range userBuiltinArgDefaults {
+		copiedBuiltinArgDefaults[k] = v
 	}
 	return &Builder{
-		Args:              initialArgs,
-		UserArgs:          userArgs,
-		HeadingArgs:       make(map[string]string),
-		AllowedArgs:       allowed,
-		GlobalAllowedArgs: globalAllowedArgs,
+		Args:               initialArgs,
+		UserArgs:           userArgs,
+		HeadingArgs:        copiedHeadingArgs,
+		AllowedArgs:        allowed,
+		GlobalAllowedArgs:  copiedGlobalAllowedArgs,
+		BuiltinArgDefaults: copiedBuiltinArgDefaults,
 	}
 }
 
