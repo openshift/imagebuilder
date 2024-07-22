@@ -755,7 +755,7 @@ func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		// If the stage introduces one of the predefined args, add the
 		// predefined value to the list of values known in this stage
 		if value, defined := builtinArgDefaults[name]; defined {
-			if haveDefault {
+			if haveDefault && (name == "TARGETPLATFORM" || name == "BUILDPLATFORM") {
 				return fmt.Errorf("attempted to redefine %q: %w", name, errdefs.ErrInvalidArgument)
 			}
 			if b.BuiltinArgDefaults == nil {
