@@ -4,21 +4,23 @@ import (
 	"errors"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
 	docker "github.com/fsouza/go-dockerclient"
 	buildkitparser "github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
 func TestDispatchArgDefaultBuiltins(t *testing.T) {
-	mybuilder := *NewBuilder(make(map[string]string))
+	mybuilder := NewBuilder(make(map[string]string))
 	args := []string{"TARGETPLATFORM"}
-	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
+	if err := arg(mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg error: %v", err)
 	}
 	args = []string{"BUILDARCH"}
-	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
+	if err := arg(mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg(2) error: %v", err)
 	}
 	localspec := platforms.DefaultSpec()
@@ -33,17 +35,17 @@ func TestDispatchArgDefaultBuiltins(t *testing.T) {
 	}
 }
 
-func TestDispatchArgTargetPlatform(t *testing.T) {
-	mybuilder := *NewBuilder(make(map[string]string))
-	args := []string{"TARGETPLATFORM=linux/arm/v7"}
-	if err := arg(&mybuilder, args, nil, nil, "", nil); err != nil {
+func TestDispatchArgTargetPlatformGood(t *testing.T) {
+	mybuilder := NewBuilder(make(map[string]string))
+	args := []string{"TARGETOS", "TARGETPLATFORM", "TARGETARCH", "TARGETVARIANT"}
+	if err := arg(mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg error: %v", err)
 	}
 	expectedArgs := []string{
-		"TARGETARCH=arm",
-		"TARGETOS=linux",
-		"TARGETPLATFORM=linux/arm/v7",
-		"TARGETVARIANT=v7",
+		"TARGETARCH=" + localspec.Architecture,
+		"TARGETOS=" + localspec.OS,
+		strings.TrimSuffix("TARGETPLATFORM="+localspec.OS+"/"+localspec.Architecture+"/"+localspec.Variant, "/"),
+		"TARGETVARIANT=" + localspec.Variant,
 	}
 	got := mybuilder.Arguments()
 	sort.Strings(got)
@@ -53,11 +55,11 @@ func TestDispatchArgTargetPlatform(t *testing.T) {
 }
 
 func TestDispatchArgTargetPlatformBad(t *testing.T) {
-	mybuilder := *NewBuilder(make(map[string]string))
+	mybuilder := NewBuilder(make(map[string]string))
 	args := []string{"TARGETPLATFORM=bozo"}
-	err := arg(&mybuilder, args, nil, nil, "", nil)
-	expectedErr := errors.New("error parsing TARGETPLATFORM argument")
-	if !reflect.DeepEqual(err, expectedErr) {
+	err := arg(mybuilder, args, nil, nil, "", nil)
+	expectedErr := errdefs.ErrInvalidArgument
+	if !errors.Is(err, expectedErr) {
 		t.Errorf("Expected %v, got %v\n", expectedErr, err)
 	}
 }
@@ -423,8 +425,8 @@ func TestDispatchAddChownWithArg(t *testing.T) {
 
 func TestDispatchAddChmodWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
-	allowedArgs := make(map[string]bool)
 	argsMap["CHMOD_VAL"] = "644"
+	allowedArgs := make(map[string]bool)
 	allowedArgs["CHMOD_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -522,13 +524,16 @@ func TestDispatchCopyChmodWithEnvironment(t *testing.T) {
 func TestDispatchCopyChownWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
 	argsMap["CHOWN_VAL"] = "6731:6731"
+	allowedArgs := make(map[string]bool)
+	allowedArgs["CHOWN_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
+		AllowedArgs: allowedArgs,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
@@ -555,13 +560,16 @@ func TestDispatchCopyChownWithArg(t *testing.T) {
 func TestDispatchCopyChmodWithArg(t *testing.T) {
 	argsMap := make(map[string]string)
 	argsMap["CHMOD_VAL"] = "444"
+	allowedArgsMap := make(map[string]bool)
+	allowedArgsMap["CHMOD_VAL"] = true
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
 			Cmd:        []string{"/bin/sh"},
 			Image:      "alpine",
 		},
-		Args: argsMap,
+		Args:        argsMap,
+		AllowedArgs: allowedArgsMap,
 	}
 
 	args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
