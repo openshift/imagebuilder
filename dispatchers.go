@@ -765,10 +765,12 @@ func arg(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 			// values that correspond to keys in
 			// builtinArgDefaults, which keeps the caller from
 			// using it to sneak in arbitrary ARG values
-			if builderValue, builderDefined := b.BuiltinArgDefaults[name]; builderDefined {
-				b.Args[name] = builderValue
-			} else {
-				b.Args[name] = value
+			if _, setByUser := b.UserArgs[name]; !setByUser && defined {
+				if builderValue, builderDefined := b.BuiltinArgDefaults[name]; builderDefined {
+					b.Args[name] = builderValue
+				} else {
+					b.Args[name] = value
+				}
 			}
 			continue
 		}

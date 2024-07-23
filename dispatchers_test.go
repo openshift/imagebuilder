@@ -36,16 +36,16 @@ func TestDispatchArgDefaultBuiltins(t *testing.T) {
 }
 
 func TestDispatchArgTargetPlatformGood(t *testing.T) {
-	mybuilder := NewBuilder(make(map[string]string))
+	mybuilder := NewBuilder(map[string]string{"TARGETOS": "android", "TARGETARCH": "286", "TARGETVARIANT": "with-287"})
 	args := []string{"TARGETOS", "TARGETPLATFORM", "TARGETARCH", "TARGETVARIANT"}
 	if err := arg(mybuilder, args, nil, nil, "", nil); err != nil {
 		t.Errorf("arg error: %v", err)
 	}
 	expectedArgs := []string{
-		"TARGETARCH=" + localspec.Architecture,
-		"TARGETOS=" + localspec.OS,
+		"TARGETARCH=286",
+		"TARGETOS=android",
 		strings.TrimSuffix("TARGETPLATFORM="+localspec.OS+"/"+localspec.Architecture+"/"+localspec.Variant, "/"),
-		"TARGETVARIANT=" + localspec.Variant,
+		"TARGETVARIANT=with-287",
 	}
 	got := mybuilder.Arguments()
 	sort.Strings(got)
