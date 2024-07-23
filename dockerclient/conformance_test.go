@@ -496,7 +496,7 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "builtins",
 			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/builtins",
-			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image"},
+			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image", "TARGETOS": "android", "TARGETARCH": "286", "TARGETVARIANT": "with-287"},
 		},
 		{
 			Name:       "header-builtin",
