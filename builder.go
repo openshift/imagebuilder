@@ -300,9 +300,25 @@ func NewStages(node *parser.Node, b *Builder) (Stages, error) {
 		if len(name) == 0 {
 			name = strconv.Itoa(i)
 		}
+		filteredUserArgs := make(map[string]string)
+		for k, v := range b.UserArgs {
+			for _, a := range b.GlobalAllowedArgs {
+				if a == k {
+					filteredUserArgs[k] = v
+				}
+			}
+		}
+		userArgs := envMapAsSlice(filteredUserArgs)
+		userArgs = mergeEnv(envMapAsSlice(b.BuiltinArgDefaults), userArgs)
+		userArgs = mergeEnv(envMapAsSlice(builtinArgDefaults), userArgs)
+		userArgs = mergeEnv(envMapAsSlice(b.HeadingArgs), userArgs)
+		processedName, err := ProcessWord(name, userArgs)
+		if err != nil {
+			return nil, err
+		}
 		stages = append(stages, Stage{
 			Position: i,
-			Name:     name,
+			Name:     processedName,
 			Builder:  b.builderForStage(headingArgs),
 			Node:     root,
 		})

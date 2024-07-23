@@ -81,8 +81,8 @@ func TestByTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stages) != 3 {
-		t.Fatalf("expected 3 stages, got %d", len(stages))
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages))
 	}
 	t.Logf("stages: %#v", stages)
 
@@ -123,6 +123,25 @@ func TestByTarget(t *testing.T) {
 	}
 	t.Logf("stages4: %#v", stages4)
 	assert.Equal(t, stages4, stages2)
+
+	stages5, found := stages.ByTarget("mytarget3")
+	if !found {
+		t.Fatal("Fifth target not found")
+	}
+	if len(stages5) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages5))
+	}
+	t.Logf("stages5: %#v", stages5)
+
+	stages6, found := stages.ByTarget("3")
+	if !found {
+		t.Fatal("Sixth target not found")
+	}
+	if len(stages6) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages4))
+	}
+	t.Logf("stages6: %#v", stages6)
+	assert.Equal(t, stages6, stages5)
 }
 
 func TestThroughTarget(t *testing.T) {
@@ -134,8 +153,8 @@ func TestThroughTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stages) != 3 {
-		t.Fatalf("expected 3 stages, got %d", len(stages))
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages))
 	}
 	t.Logf("stages: %#v", stages)
 
@@ -176,6 +195,25 @@ func TestThroughTarget(t *testing.T) {
 	}
 	t.Logf("stages4: %#v", stages4)
 	assert.Equal(t, stages4, stages2)
+
+	stages5, found := stages.ThroughTarget("mytarget3")
+	if !found {
+		t.Fatal("Fifth target not found")
+	}
+	if len(stages5) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages5))
+	}
+	t.Logf("stages5: %#v", stages5)
+
+	stages6, found := stages.ThroughTarget("3")
+	if !found {
+		t.Fatal("Sixth target not found")
+	}
+	if len(stages6) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages4))
+	}
+	t.Logf("stages6: %#v", stages6)
+	assert.Equal(t, stages6, stages5)
 }
 
 func TestMultiStageParse(t *testing.T) {
