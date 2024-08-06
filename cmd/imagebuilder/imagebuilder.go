@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	dockerregistrytypes "github.com/docker/docker/api/types/registry"
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/klog"
