@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/errdefs"
+	"github.com/containerd/platforms"
 	docker "github.com/fsouza/go-dockerclient"
 	buildkitparser "github.com/moby/buildkit/frontend/dockerfile/parser"
 )

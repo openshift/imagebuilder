@@ -3,9 +3,10 @@ module github.com/openshift/imagebuilder
 go 1.21.0
 
 require (
-	github.com/containerd/containerd v1.7.20
+	github.com/containerd/errdefs v0.1.0
+	github.com/containerd/platforms v0.2.1
 	github.com/containers/storage v1.55.0
-	github.com/docker/distribution v2.8.3+incompatible
+	github.com/distribution/reference v0.6.0
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/fsouza/go-dockerclient v1.11.2
 	github.com/moby/buildkit v0.15.1
@@ -16,13 +17,10 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/Microsoft/hcsshim v0.12.5 // indirect
-	github.com/containerd/errdefs v0.1.0 // indirect
+	github.com/containerd/containerd v1.7.20 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
