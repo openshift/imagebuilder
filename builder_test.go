@@ -16,7 +16,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/platforms"
 	"github.com/openshift/imagebuilder/dockerfile/parser"
 )
 
