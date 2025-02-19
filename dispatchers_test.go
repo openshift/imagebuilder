@@ -4,7 +4,6 @@ import (
 	"errors"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/containerd/errdefs"
@@ -44,7 +43,7 @@ func TestDispatchArgTargetPlatformGood(t *testing.T) {
 	expectedArgs := []string{
 		"TARGETARCH=286",
 		"TARGETOS=android",
-		strings.TrimSuffix("TARGETPLATFORM="+localspec.OS+"/"+localspec.Architecture+"/"+localspec.Variant, "/"),
+		"TARGETPLATFORM=" + localspec.OS + "/" + localspec.Architecture,
 		"TARGETVARIANT=with-287",
 	}
 	got := mybuilder.Arguments()
@@ -939,9 +938,6 @@ func TestDispatchFromFlags(t *testing.T) {
 
 func TestDispatchFromFlagsAndUseBuiltInArgs(t *testing.T) {
 	expectedPlatform := localspec.OS + "/" + localspec.Architecture
-	if localspec.Variant != "" {
-		expectedPlatform += "/" + localspec.Variant
-	}
 	mybuilder := Builder{
 		RunConfig: docker.Config{
 			WorkingDir: "/root",
