@@ -9,7 +9,7 @@ COPY --chown=bin     script /usr/bin/script.bin
 COPY --chown=lp      script /usr/bin/script.lp
 COPY --chown=3       script script2 /usr/local/bin/
 RUN  rm -fr /var/created-directory
-COPY --chown=2097152 script script2 /var/created/directory/
+COPY --chown=12345 script script2 /var/created/directory/
 RUN  rm -fr /no-such-directory
 COPY --chown=3       script script2 /no-such-directory/
 RUN  rm -fr /new-workdir
