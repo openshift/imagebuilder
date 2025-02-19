@@ -6,7 +6,7 @@ services:
   - docker
 
 go:
-  - "1.21.13"
+  - "1.22.12"
 
 before_install:
   - sudo systemctl stop docker.service && sudo systemctl stop docker.socket
