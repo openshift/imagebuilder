@@ -499,6 +499,11 @@ func TestConformanceInternal(t *testing.T) {
 			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image", "TARGETOS": "android", "TARGETARCH": "286", "TARGETVARIANT": "with-287"},
 		},
 		{
+			Name:       "multistage-builtin-args", // By default, BUILDVARIANT/TARGETVARIANT should be empty.
+			Version:    docker.BuilderBuildKit,
+			Dockerfile: "testdata/builtins/Dockerfile.margs",
+		},
+		{
 			Name:       "header-builtin",
 			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/header-builtin",
