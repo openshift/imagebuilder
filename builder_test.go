@@ -523,13 +523,14 @@ func TestMultiStageArgScope(t *testing.T) {
 	args := map[string]string{
 		"SECRET": "secretthings",
 		"BAR":    "notsecretthings",
+		"UNUSED": "notrightawayanyway",
 	}
 	stages, err := NewStages(n, NewBuilder(args))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stages) != 2 {
-		t.Fatalf("expected 2 stages, got %d", len(stages))
+	if len(stages) != 3 {
+		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
 
 	for _, stage := range stages {
@@ -561,6 +562,30 @@ func TestMultiStageArgScope(t *testing.T) {
 	}
 	if !builderHasArgument(stages[1].Builder, "BAR=notsecretthings") {
 		t.Fatalf("expected BAR=notsecretthings to be present in second stage arguments list: %v", secondStageArguments)
+	}
+
+	thirdStageArguments := stages[2].Builder.Arguments()
+	inheritedInThirdStage := false
+	unusedInThirdStage := false
+	for _, arg := range thirdStageArguments {
+		if match, err := regexp.MatchString(`INHERITED=.*`, arg); err == nil && match {
+			inheritedInThirdStage = true
+			continue
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		if match, err := regexp.MatchString(`UNUSED=.*`, arg); err == nil && match {
+			unusedInThirdStage = true
+			continue
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !inheritedInThirdStage {
+		t.Fatalf("expected INHERITED to be present in third stage")
+	}
+	if !unusedInThirdStage {
+		t.Fatalf("expected UNUSED to be present in third stage")
 	}
 }
 
