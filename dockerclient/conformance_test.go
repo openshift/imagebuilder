@@ -1133,7 +1133,7 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 
 	// for mutation commands, check the layer diff
 	if testFilesystem {
-		differs, onlyA, onlyB, err := compareImageFS(c, a, b)
+		differs, contents, onlyA, onlyB, err := compareImageFS(c, a, b)
 		if err != nil {
 			t.Errorf("can't calculate FS differences %q: %v", a, err)
 			return false
@@ -1143,7 +1143,11 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 				delete(differs, k)
 				continue
 			}
-			t.Errorf("%s and %s differ at %s:\n%#v\n%#v", a, b, k, v[0].Header, v[1].Header)
+			if content, ok := contents[k]; ok {
+				t.Errorf("%s and %s differ at %s:\n%#v\ncontents: %q\n%#v\ncontents: %q", a, b, k, v[0].Header, string(content[0]), v[1].Header, string(content[1]))
+			} else {
+				t.Errorf("%s and %s differ at %s:\n%#v\n%#v", a, b, k, v[0].Header, v[1].Header)
+			}
 		}
 		for k, v := range onlyA {
 			if ignoreFuncs(ignoreFns).Ignore(v.Header, nil) {
@@ -1222,16 +1226,17 @@ func ignoreDockerfileSize(dockerfile string) ignoreFunc {
 // compareImageFS exports the file systems of two images and returns a map
 // of files that differ in any way (modification time excluded), only exist in
 // image A, or only existing in image B.
-func compareImageFS(c *docker.Client, a, b string) (differ map[string][]tarHeader, onlyA, onlyB map[string]tarHeader, err error) {
-	fsA, err := imageFSMetadata(c, a)
+func compareImageFS(c *docker.Client, a, b string) (differ map[string][]tarHeader, differentContent map[string][2][]byte, onlyA, onlyB map[string]tarHeader, err error) {
+	fsA, contentA, err := imageFSMetadata(c, a)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	fsB, err := imageFSMetadata(c, b)
+	fsB, contentB, err := imageFSMetadata(c, b)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	differ = make(map[string][]tarHeader)
+	differentContent = make(map[string][2][]byte)
 	onlyA = make(map[string]tarHeader)
 	onlyB = fsB
 	for k, v1 := range fsA {
@@ -1246,9 +1251,13 @@ func compareImageFS(c *docker.Client, a, b string) (differ map[string][]tarHeade
 		v2.ModTime = time.Time{}
 		if !reflect.DeepEqual(v1, v2) {
 			differ[k] = []tarHeader{v1, v2}
+			c1, c2 := contentA[v1.Name], contentB[v2.Name]
+			if len(c1) > 0 || len(c2) > 0 {
+				differentContent[v1.Name] = [2][]byte{c1, c2}
+			}
 		}
 	}
-	return differ, onlyA, onlyB, nil
+	return differ, differentContent, onlyA, onlyB, nil
 }
 
 type tarHeader struct {
@@ -1264,21 +1273,36 @@ func (h tarHeader) String() string {
 }
 
 // imageFSMetadata creates a container and reads the filesystem metadata out of the archive.
-func imageFSMetadata(c *docker.Client, name string) (map[string]tarHeader, error) {
+func imageFSMetadata(c *docker.Client, name string) (map[string]tarHeader, map[string][]byte, error) {
 	container, err := c.CreateContainer(docker.CreateContainerOptions{Name: name + "-export", Config: &docker.Config{Image: name}})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer c.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, RemoveVolumes: true, Force: true})
 
 	ch := make(chan struct{})
-	result := make(map[string]tarHeader)
+	tarHeaders := make(map[string]tarHeader)
+	tarContents := make(map[string][]byte)
 	r, w := io.Pipe()
 	go func() {
 		defer close(ch)
 		out := tar.NewReader(r)
 		for {
 			h, err := out.Next()
+			if h != nil {
+				tarHeaders[h.Name] = tarHeader{h}
+				if h.Size < 512 { // arbitrary size limit
+					contents, err := io.ReadAll(out)
+					if err != nil {
+						w.CloseWithError(err)
+						break
+					}
+					// only ascii
+					if bytes.IndexFunc(contents, func(r rune) bool { return r > 128 }) == -1 {
+						tarContents[h.Name] = contents
+					}
+				}
+			}
 			if err != nil {
 				if err == io.EOF {
 					w.Close()
@@ -1287,14 +1311,17 @@ func imageFSMetadata(c *docker.Client, name string) (map[string]tarHeader, error
 				}
 				break
 			}
-			result[h.Name] = tarHeader{h}
+			if h == nil {
+				w.Close()
+				break
+			}
 		}
 	}()
 	if err := c.ExportContainer(docker.ExportContainerOptions{ID: container.ID, OutputStream: w}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	<-ch
-	return result, nil
+	return tarHeaders, tarContents, nil
 }
 
 type hardlinkChecker struct {
