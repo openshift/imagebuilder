@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -533,10 +534,23 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "dockerfile custom location",
 			// Tests Non-default location dockerfile
-			Dockerfile: "Dockerfile.build",
-			Git:        "https://github.com/docker-library/hello-world.git",
+			Dockerfile: "image/Dockerfile",
+			Git:        "https://github.com/containers/PodmanHello.git",
 			PostClone: func(dir string) error {
-				return os.Remove(filepath.Join(dir, ".dockerignore"))
+				if err := os.Mkdir(filepath.Join(dir, "image"), 0o755); err != nil {
+					return err
+				}
+				contents, err := os.ReadFile(filepath.Join(dir, "Containerfile"))
+				if err != nil {
+					return err
+				}
+				if err := os.Remove(filepath.Join(dir, "Dockerfile")); err != nil && !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if err := os.Remove(filepath.Join(dir, "Containerfile")); err != nil {
+					return err
+				}
+				return os.WriteFile(filepath.Join(dir, "image", "Dockerfile"), contents, 0o644)
 			},
 		},
 		{
@@ -1100,8 +1114,20 @@ func equivalentImages(t *testing.T, c *docker.Client, a, b string, testFilesyste
 		return false
 	}
 
+	metadataError := false
+	if imageA.OS != imageB.OS {
+		t.Errorf("generated image OS field did not match (%s, %s): %q %q", a, b, imageA.OS, imageB.OS)
+		metadataError = true
+	}
+	if imageA.Architecture != imageB.Architecture {
+		t.Errorf("generated image Architecture field did not match (%s, %s): %q %q", a, b, imageA.Architecture, imageB.Architecture)
+		metadataError = true
+	}
 	if !metadataFn(imageA.Config, imageB.Config) {
 		t.Errorf("generated image metadata did not match (%s, %s):\n%#v\n%#v", a, b, imageA.Config, imageB.Config)
+		metadataError = true
+	}
+	if metadataError {
 		return false
 	}
 
