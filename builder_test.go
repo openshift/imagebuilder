@@ -748,12 +748,12 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/Dockerfile.add",
 			From:       "busybox",
 			Copies: []Copy{
-				{Src: []string{"https://github.com/openshift/origin/raw/master/README.md"}, Dest: "/README.md", Download: true},
-				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/", Download: true},
-				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/A", Download: true},
-				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/a", Download: true},
-				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/b/a", Download: true},
-				{Src: []string{"https://github.com/openshift/origin/raw/master/LICENSE"}, Dest: "/b/", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/README.md"}, Dest: "/README.md", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/A", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/a", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/b/a", Download: true},
+				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/b/", Download: true},
 				{Src: []string{"https://github.com/openshift/ruby-hello-world/archive/master.zip"}, Dest: "/tmp/", Download: true},
 			},
 			Runs: []Run{
