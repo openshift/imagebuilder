@@ -1,9 +1,14 @@
 FROM alpine
 ARG SECRET
+ARG UNUSED
+ARG INHERITED=set
 RUN echo "$SECRET"
 
 FROM alpine
 ARG FOO=test
 ARG BAR=bartest
 RUN echo "$FOO:$BAR"
+RUN echo "$SECRET"
+
+FROM 0
 RUN echo "$SECRET"
