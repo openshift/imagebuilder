@@ -1,4 +1,4 @@
-FROM debian
+FROM mirror.gcr.io/debian
 CMD /app/main.sh
 HEALTHCHECK   CMD   a b
 HEALTHCHECK --timeout=3s CMD ["foo"]

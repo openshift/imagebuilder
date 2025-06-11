@@ -1,6 +1,6 @@
-FROM busybox:latest
+FROM mirror.gcr.io/busybox:latest
 WORKDIR /
-COPY --from=nginx:latest /etc/nginx/nginx.conf /var/tmp/
+COPY --from=mirror.gcr.io/nginx:latest /etc/nginx/nginx.conf /var/tmp/
 COPY dir /var/dir
 RUN cat /var/tmp/nginx.conf
 

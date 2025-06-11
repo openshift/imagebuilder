@@ -142,7 +142,7 @@ func TestParseIncludesLineNumbers(t *testing.T) {
 
 func TestParseWarnsOnEmptyContinutationLine(t *testing.T) {
 	dockerfile := bytes.NewBufferString(`
-FROM alpine:3.6
+FROM mirror.gcr.io/alpine:3.6
 
 RUN something \
 

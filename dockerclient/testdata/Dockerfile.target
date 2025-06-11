@@ -3,11 +3,11 @@ ARG TARGET3=mytarget3
 FROM ubuntu:latest
 RUN touch /1
 
-FROM alpine:latest AS mytarget 
+FROM mirror.gcr.io/alpine:latest AS mytarget
 RUN touch /2
 
-FROM busybox:latest AS mytarget2 
+FROM mirror.gcr.io/busybox:latest AS mytarget2
 RUN touch /3
 
-FROM busybox:latest AS ${TARGET3}
+FROM mirror.gcr.io/busybox:latest AS ${TARGET3}
 RUN touch /4

@@ -1,4 +1,4 @@
-FROM debian
+FROM mirror.gcr.io/debian
 ADD check.sh main.sh /app/
 CMD /app/main.sh
 HEALTHCHECK

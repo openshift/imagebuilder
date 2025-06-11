@@ -244,7 +244,7 @@ func TestMultiStageParseHeadingArg(t *testing.T) {
 		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
 
-	fromImages := []string{"golang:1.9", "busybox:latest", "golang:1.9"}
+	fromImages := []string{"mirror.gcr.io/golang:1.24", "mirror.gcr.io/busybox:latest", "mirror.gcr.io/golang:1.24"}
 	for i, stage := range stages {
 		from, err := stage.Builder.From(stage.Node)
 		if err != nil {
@@ -603,7 +603,7 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if from != "busybox" {
+	if from != "mirror.gcr.io/busybox" {
 		t.Fatalf("unexpected from: %s", from)
 	}
 	for _, child := range node.Children {
@@ -670,37 +670,37 @@ func TestBuilder(t *testing.T) {
 	}{
 		{
 			Dockerfile: "dockerclient/testdata/dir/Dockerfile",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Copies: []Copy{
 				{Src: []string{"."}, Dest: "/", Download: false},
 				{Src: []string{"."}, Dest: "/dir"},
 				{Src: []string{"subdir/"}, Dest: "/test/", Download: false},
 			},
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/ignore/Dockerfile",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Copies: []Copy{
 				{Src: []string{"."}, Dest: "/"},
 			},
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.env",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Config: docker.Config{
 				Env:   []string{"name=value", "name2=value2a            value2b", "name1=value1", "name3=value3a\\n\"value3b\"", "name4=value4a\\nvalue4b"},
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.edgecases",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Copies: []Copy{
 				{Src: []string{"."}, Dest: "/", Download: true},
 				{Src: []string{"."}, Dest: "/test/copy"},
@@ -719,7 +719,7 @@ func TestBuilder(t *testing.T) {
 				ExposedPorts: map[docker.Port]struct{}{"6000/tcp": {}, "3000/tcp": {}, "9000/tcp": {}, "5000/tcp": {}},
 				Env:          []string{"SCUBA=1 DUBA 3"},
 				Cmd:          []string{"/bin/sh", "-c", "echo 'test' | wc -"},
-				Image:        "busybox",
+				Image:        "mirror.gcr.io/busybox",
 				Volumes:      map[string]struct{}{"/test2": {}, "/test3": {}, "/test": {}},
 				WorkingDir:   "/test",
 				OnBuild:      []string{"RUN [\"echo\", \"test\"]", "RUN echo test", "COPY . /"},
@@ -727,26 +727,26 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.unknown",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Unrecognized: []Step{
 				{Command: "health", Message: "HEALTH ", Original: "HEALTH NONE", Args: []string{""}, Flags: []string{}, Env: []string{}},
 				{Command: "unrecognized", Message: "UNRECOGNIZED ", Original: "UNRECOGNIZED", Args: []string{""}, Env: []string{}},
 			},
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.exposedefault",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Config: docker.Config{
 				ExposedPorts: map[docker.Port]struct{}{"3469/tcp": {}},
-				Image:        "busybox",
+				Image:        "mirror.gcr.io/busybox",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.add",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Copies: []Copy{
 				{Src: []string{"https://github.com/openshift/origin/raw/main/README.md"}, Dest: "/README.md", Download: true},
 				{Src: []string{"https://github.com/openshift/origin/raw/main/LICENSE"}, Dest: "/", Download: true},
@@ -760,15 +760,15 @@ func TestBuilder(t *testing.T) {
 				{Shell: true, Args: []string{"mkdir ./b"}},
 			},
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 				User:  "root",
 			},
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.badhealthcheck",
-			From:       "debian",
+			From:       "mirror.gcr.io/debian",
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 			},
 			RunErrFn: func(err error) bool {
 				return err != nil && strings.Contains(err.Error(), "HEALTHCHECK requires at least one argument")
@@ -776,9 +776,9 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.healthcheck",
-			From:       "debian",
+			From:       "mirror.gcr.io/debian",
 			Config: docker.Config{
-				Image: "debian",
+				Image: "mirror.gcr.io/debian",
 				Cmd:   []string{"/bin/sh", "-c", "/app/main.sh"},
 				Healthcheck: &docker.HealthConfig{
 					StartPeriod:   8 * time.Second,
@@ -792,9 +792,9 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.healthcheck_defaults",
-			From:       "debian",
+			From:       "mirror.gcr.io/debian",
 			Config: docker.Config{
-				Image: "debian",
+				Image: "mirror.gcr.io/debian",
 				Cmd:   []string{"/bin/sh", "-c", "/app/main.sh"},
 				Healthcheck: &docker.HealthConfig{
 					StartPeriod:   0 * time.Second,
@@ -808,7 +808,7 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.envsubst",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Image: &docker.Image{
 				ID: "busybox2",
 				Config: &docker.Config{
@@ -822,7 +822,7 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.unset",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Image: &docker.Image{
 				ID: "busybox2",
 				Config: &docker.Config{
@@ -840,9 +840,9 @@ func TestBuilder(t *testing.T) {
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.args",
 			Args:       map[string]string{"BAR": "first"},
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Config: docker.Config{
-				Image:  "busybox",
+				Image:  "mirror.gcr.io/busybox",
 				Env:    []string{"FOO=value", "TEST=", "BAZ=first"},
 				Labels: map[string]string{"test": "value"},
 			},
@@ -852,7 +852,7 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/volume/Dockerfile",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Image: &docker.Image{
 				ID:     "busybox2",
 				Config: &docker.Config{},
@@ -872,9 +872,9 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/volumerun/Dockerfile",
-			From:       "busybox",
+			From:       "mirror.gcr.io/busybox",
 			Config: docker.Config{
-				Image: "busybox",
+				Image: "mirror.gcr.io/busybox",
 				Volumes: map[string]struct{}{
 					"/var/www": {},
 				},
@@ -892,7 +892,7 @@ func TestBuilder(t *testing.T) {
 			Dockerfile: "dockerclient/testdata/multistage/Dockerfile",
 			From:       "busybox",
 			Config: docker.Config{
-				Image:      "busybox",
+				Image:      "mirror.gcr.io/busybox",
 				WorkingDir: "/tmp",
 			},
 			FromErrFn: func(err error) bool {
@@ -909,9 +909,9 @@ func TestBuilder(t *testing.T) {
 		},
 		{
 			Dockerfile: "dockerclient/testdata/Dockerfile.shell",
-			From:       "centos:7",
+			From:       "public.ecr.aws/docker/library/centos:7",
 			Config: docker.Config{
-				Image: "centos:7",
+				Image: "public.ecr.aws/docker/library/centos:7",
 				Shell: []string{"/bin/bash", "-xc"},
 			},
 			Runs: []Run{
@@ -1048,7 +1048,7 @@ func TestRunWithMultiArg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if from != "alpine" {
+	if from != "mirror.gcr.io/alpine" {
 		t.Fatalf("unexpected from: %s", from)
 	}
 	for _, child := range node.Children {

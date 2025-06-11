@@ -1,2 +1,2 @@
-FROM debian
+FROM mirror.gcr.io/debian
 HEALTHCHECK
