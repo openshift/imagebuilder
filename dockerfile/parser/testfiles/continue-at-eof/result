@@ -1,2 +1,2 @@
-(from "alpine:3.5")
+(from "mirror.gcr.io/alpine:3.5")
 (run "something")

@@ -1,4 +1,4 @@
-FROM busybox:buildroot-2014.02
+FROM mirror.gcr.io/busybox:buildroot-2014.02
 
 LABEL maintainer docker <docker@docker.io>
 

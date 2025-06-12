@@ -85,7 +85,7 @@ func TestMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := `91 /tmp/test/Dockerfile 644 regular file 0 0
+	expected := `105 /tmp/test/Dockerfile 644 regular file 0 0
 4 /tmp/test/file 644 regular file 0 0
 5 /tmp/test/file2 644 regular file 0 0
 `
@@ -145,9 +145,9 @@ func TestCopyFrom(t *testing.T) {
 			e.Out, e.ErrOut = out, out
 			b := imagebuilder.NewBuilder(nil)
 			dockerfile := fmt.Sprintf(`
-				FROM busybox AS base
+				FROM mirror.gcr.io/busybox AS base
 				RUN %s
-				FROM busybox
+				FROM mirror.gcr.io/busybox
 				%s
 				COPY --from=base %s
 				RUN %s
@@ -497,7 +497,7 @@ func TestConformanceInternal(t *testing.T) {
 			Name:       "builtins",
 			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/builtins",
-			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "busybox", "ALPINE": "alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image", "TARGETOS": "android", "TARGETARCH": "286", "TARGETVARIANT": "with-287"},
+			Args:       map[string]string{"SOURCE": "source", "BUSYBOX": "mirror.gcr.io/busybox", "ALPINE": "mirror.gcr.io/alpine", "OWNERID": "0", "SECONDBASE": "localhost/no-such-image", "TARGETOS": "android", "TARGETARCH": "286", "TARGETVARIANT": "with-287"},
 		},
 		{
 			Name:       "multistage-builtin-args", // By default, BUILDVARIANT/TARGETVARIANT should be empty.
@@ -556,7 +556,7 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "16/alpine3.20",
+			ContextDir: "18/alpine3.22",
 			Dockerfile: "Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{
@@ -613,7 +613,7 @@ func TestTransientMount(t *testing.T) {
 	out := &bytes.Buffer{}
 	e.Out = out
 	b := imagebuilder.NewBuilder(nil)
-	node, err := imagebuilder.ParseDockerfile(bytes.NewBufferString("FROM busybox\nRUN ls /mountdir/subdir\nRUN cat /mountfile\n"))
+	node, err := imagebuilder.ParseDockerfile(bytes.NewBufferString("FROM mirror.gcr.io/busybox\nRUN ls /mountdir/subdir\nRUN cat /mountfile\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 ARG FOO=latest
-FROM alpine
+FROM mirror.gcr.io/alpine
 RUN echo "$FOO"
 
-FROM centos:$FOO
+FROM public.ecr.aws/centos:$FOO
 ARG FOO
 RUN echo "$FOO"

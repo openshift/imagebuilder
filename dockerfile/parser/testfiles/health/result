@@ -1,4 +1,4 @@
-(from "debian")
+(from "mirror.gcr.io/debian")
 (add "check.sh" "main.sh" "/app/")
 (cmd "/app/main.sh")
 (healthcheck)

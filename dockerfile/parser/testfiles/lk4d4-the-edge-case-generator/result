@@ -1,4 +1,4 @@
-(from "busybox:buildroot-2014.02")
+(from "mirror.gcr.io/busybox:buildroot-2014.02")
 (label "maintainer" "docker <docker@docker.io>")
 (onbuild (run "echo" "test"))
 (onbuild (run "echo test"))

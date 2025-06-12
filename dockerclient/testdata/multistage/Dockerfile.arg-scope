@@ -1,10 +1,10 @@
-FROM alpine
+FROM mirror.gcr.io/alpine
 ARG SECRET
 ARG UNUSED
 ARG INHERITED=set
 RUN echo "$SECRET"
 
-FROM alpine
+FROM mirror.gcr.io/alpine
 ARG FOO=test
 ARG BAR=bartest
 RUN echo "$FOO:$BAR"

@@ -1,4 +1,4 @@
-FROM centos:7
+FROM public.ecr.aws/docker/library/centos:7
 ADD archived.txt /archived.txt
 ADD archived.txt /archived/
 ADD archived.tar /archived.tar

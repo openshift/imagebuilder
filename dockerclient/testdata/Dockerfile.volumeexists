@@ -1,4 +1,4 @@
-FROM busybox
+FROM mirror.gcr.io/busybox
 RUN mkdir -p 0700 /var/lib/bespoke-directory
 RUN chown 1:1 /var/lib/bespoke-directory
 VOLUME /var/lib/bespoke-directory
