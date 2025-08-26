@@ -21,20 +21,6 @@ github.com/containerd/platforms
 # github.com/containerd/typeurl/v2 v2.2.3
 ## explicit; go 1.21
 github.com/containerd/typeurl/v2
-# github.com/containers/storage v1.57.1
-## explicit; go 1.22.0
-github.com/containers/storage/pkg/archive
-github.com/containers/storage/pkg/fileutils
-github.com/containers/storage/pkg/idtools
-github.com/containers/storage/pkg/ioutils
-github.com/containers/storage/pkg/longpath
-github.com/containers/storage/pkg/mount
-github.com/containers/storage/pkg/pools
-github.com/containers/storage/pkg/promise
-github.com/containers/storage/pkg/reexec
-github.com/containers/storage/pkg/regexp
-github.com/containers/storage/pkg/system
-github.com/containers/storage/pkg/unshare
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -74,13 +60,14 @@ github.com/fsouza/go-dockerclient
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
-# github.com/klauspost/compress v1.17.11
-## explicit; go 1.21
+# github.com/klauspost/compress v1.18.0
+## explicit; go 1.22
 github.com/klauspost/compress
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
+github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
@@ -110,7 +97,7 @@ github.com/moby/sys/mountinfo
 # github.com/moby/sys/sequential v0.6.0
 ## explicit; go 1.17
 github.com/moby/sys/sequential
-# github.com/moby/sys/user v0.3.0
+# github.com/moby/sys/user v0.4.0
 ## explicit; go 1.17
 github.com/moby/sys/user
 # github.com/moby/sys/userns v0.1.0
@@ -130,7 +117,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runtime-spec v1.2.0
+# github.com/opencontainers/runtime-spec v1.2.1
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/pkg/errors v0.9.1
@@ -139,7 +126,7 @@ github.com/pkg/errors
 # github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 ## explicit; go 1.20
 github.com/planetscale/vtprotobuf/protohelpers
-# github.com/pmezard/go-difflib v1.0.0
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/rogpeppe/go-internal v1.10.0
@@ -152,14 +139,28 @@ github.com/sirupsen/logrus
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
-# github.com/ulikunitz/xz v0.5.12
+# github.com/ulikunitz/xz v0.5.13
 ## explicit; go 1.12
 github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/hash
 github.com/ulikunitz/xz/internal/xlog
 github.com/ulikunitz/xz/lzma
-# golang.org/x/sys v0.29.0
-## explicit; go 1.18
+# go.podman.io/storage v0.0.0-20250826054041-6e4bed3c9118
+## explicit; go 1.23.3
+go.podman.io/storage/pkg/archive
+go.podman.io/storage/pkg/fileutils
+go.podman.io/storage/pkg/idtools
+go.podman.io/storage/pkg/ioutils
+go.podman.io/storage/pkg/longpath
+go.podman.io/storage/pkg/mount
+go.podman.io/storage/pkg/pools
+go.podman.io/storage/pkg/promise
+go.podman.io/storage/pkg/reexec
+go.podman.io/storage/pkg/regexp
+go.podman.io/storage/pkg/system
+go.podman.io/storage/pkg/unshare
+# golang.org/x/sys v0.35.0
+## explicit; go 1.23.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # google.golang.org/protobuf v1.35.2
@@ -196,8 +197,6 @@ google.golang.org/protobuf/types/known/anypb
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# gotest.tools/v3 v3.5.1
-## explicit; go 1.17
 # k8s.io/klog v1.0.0
 ## explicit; go 1.12
 k8s.io/klog
