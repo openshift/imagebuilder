@@ -12,7 +12,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/docker/docker/pkg/archive"
+	"go.podman.io/storage/pkg/archive"
 )
 
 type testDirectoryCheck map[string]bool
