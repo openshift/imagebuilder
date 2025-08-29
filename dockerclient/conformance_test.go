@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fileutils"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/openshift/imagebuilder/dockerfile/command"
 	"github.com/openshift/imagebuilder/dockerfile/parser"
+	"go.podman.io/storage/pkg/archive"
 
 	"github.com/openshift/imagebuilder"
 )
