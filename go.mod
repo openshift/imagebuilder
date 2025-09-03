@@ -6,7 +6,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/platforms v1.0.0-rc.1
 	github.com/distribution/reference v0.6.0
-	github.com/docker/docker v28.2.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/fsouza/go-dockerclient v1.11.2
 	github.com/moby/buildkit v0.23.2
 	github.com/stretchr/testify v1.11.1
