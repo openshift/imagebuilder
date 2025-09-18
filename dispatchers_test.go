@@ -2,6 +2,7 @@ package imagebuilder
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -982,5 +983,67 @@ func TestDispatchFromFlagsAndUseHeadingArgs(t *testing.T) {
 
 	if mybuilder.Platform != expectedPlatform {
 		t.Errorf("Expected %v, to match %v\n", expectedPlatform, mybuilder.Platform)
+	}
+}
+
+func TestDispatchExpose(t *testing.T) {
+	cases := map[string]string{
+		"80":      "80/tcp",
+		"80/tcp":  "80/tcp",
+		"80/udp":  "80/udp",
+		"88":      "88/tcp",
+		"88/udp":  "88/udp",
+		"88/tcp":  "88/tcp",
+		"443/udp": "443/udp",
+		"443/tcp": "443/tcp",
+		"443":     "443/tcp",
+		"992/udp": "992/udp",
+		"992/tcp": "992/tcp",
+		"993/tcp": "993/tcp",
+		"993/udp": "993/udp",
+		"993":     "993/tcp",
+		"995/tcp": "995/tcp",
+		"995/udp": "995/udp",
+	}
+	var keys []string
+	for k := range cases {
+		keys = append(keys, k)
+	}
+
+	for start := 0; start < len(cases); start++ {
+		for size := 1; start+size <= len(cases); size++ {
+			t.Run(fmt.Sprintf("%d:%d", start, start+size), func(t *testing.T) {
+				mybuilder := Builder{
+					RunConfig: docker.Config{
+						WorkingDir: "/root",
+						Cmd:        []string{"/bin/sh"},
+						Image:      "",
+					},
+				}
+
+				flags := []string{}
+				args := []string{""}
+				original := "FROM scratch"
+
+				if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+					t.Errorf("from error: %v", err)
+					return
+				}
+				for i := start; i < start+size; i++ {
+					if err := expose(&mybuilder, keys[i:i+1], nil, nil, "EXPOSE "+keys[i], nil); err != nil {
+						t.Errorf("expose error: %v", err)
+						return
+					}
+				}
+				if len(mybuilder.RunConfig.ExposedPorts) > size {
+					t.Errorf("wrong number of ports: %d > %d", len(mybuilder.RunConfig.ExposedPorts), size)
+				}
+				for _, k := range keys[start : start+size] {
+					if _, ok := mybuilder.RunConfig.ExposedPorts[docker.Port(cases[k])]; !ok {
+						t.Errorf("did not find %q (from %q) in port list", cases[k], k)
+					}
+				}
+			})
+		}
 	}
 }
