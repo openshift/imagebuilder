@@ -303,11 +303,11 @@ func TestArgResolutionOfDefaultVariables(t *testing.T) {
 			dockerfile:   "FROM platform-${TARGETARCH}",
 			args:         map[string]string{"FOO": "bar"},
 			expectedFrom: "platform-" + localspec.Architecture},
-		// Override should not work since we did not declare
+		// Override should work since built-in args are declared implicitly in the heading
 		{name: "override-default-built-arg-without-declaration",
 			dockerfile:   "FROM platform-${TARGETARCH}",
 			args:         map[string]string{"TARGETARCH": "bar"},
-			expectedFrom: "platform-" + localspec.Architecture},
+			expectedFrom: "platform-bar"},
 		{name: "override-default-built-arg",
 			dockerfile:   "ARG TARGETARCH\nFROM platform-${TARGETARCH}",
 			args:         map[string]string{"TARGETARCH": "bar"},
@@ -321,6 +321,10 @@ func TestArgResolutionOfDefaultVariables(t *testing.T) {
 			dockerfile:   "FROM ${FOO}",
 			args:         map[string]string{"FOO": "bar"},
 			expectedFrom: ""},
+		{name: "refer-to-default-built-arg",
+			dockerfile:   "ARG COPIEDARCH=${TARGETARCH}\nFROM platform-${COPIEDARCH}",
+			args:         map[string]string{"FOO": "bar"},
+			expectedFrom: "platform-" + localspec.Architecture},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			n, err := ParseDockerfile(strings.NewReader(tc.dockerfile))
