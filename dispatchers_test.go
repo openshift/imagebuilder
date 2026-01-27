@@ -986,6 +986,55 @@ func TestDispatchFromFlagsAndUseHeadingArgs(t *testing.T) {
 	}
 }
 
+func TestDispatchFromAfterFlag(t *testing.T) {
+	expectedAfter := "builder"
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--after=builder"}
+	args := []string{""}
+	original := "FROM --after=builder busybox"
+
+	if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("from error: %v", err)
+	}
+
+	if mybuilder.After != expectedAfter {
+		t.Errorf("Expected %v, to match %v\n", expectedAfter, mybuilder.After)
+	}
+}
+
+func TestDispatchFromAfterFlagAndUseHeadingArgs(t *testing.T) {
+	expectedAfter := "mystage"
+	mybuilder := Builder{
+		HeadingArgs: map[string]string{
+			"STAGE_VAR": expectedAfter,
+		},
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--after=$STAGE_VAR"}
+	args := []string{""}
+	original := "FROM --after=$STAGE_VAR busybox"
+
+	if err := from(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Errorf("from error: %v", err)
+	}
+
+	if mybuilder.After != expectedAfter {
+		t.Errorf("Expected %v, to match %v\n", expectedAfter, mybuilder.After)
+	}
+}
+
 func TestDispatchExpose(t *testing.T) {
 	cases := map[string]string{
 		"80":      "80/tcp",
