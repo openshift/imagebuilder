@@ -2,6 +2,8 @@ FROM mirror.gcr.io/alpine
 ARG SECRET
 ARG UNUSED
 ARG INHERITED=set
+ARG QUOTED="words with quotes"
+ARG REQUOTED=$QUOTED
 RUN echo "$SECRET"
 
 FROM mirror.gcr.io/alpine
@@ -12,3 +14,5 @@ RUN echo "$SECRET"
 
 FROM 0
 RUN echo "$SECRET"
+ARG QUOTED
+ARG REQUOTED

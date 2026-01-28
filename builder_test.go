@@ -546,6 +546,12 @@ func TestMultiStageArgScope(t *testing.T) {
 	if !builderHasArgument(stages[0].Builder, "SECRET=secretthings") {
 		t.Fatalf("expected SECRET=secretthings to be contained in first stage arguments list: %v", stages[0].Builder.Arguments())
 	}
+	if !builderHasArgument(stages[0].Builder, "QUOTED=words with quotes") {
+		t.Fatalf(`expected QUOTED="words with quotes" to be present in first stage arguments list: %v`, stages[0].Builder.Arguments())
+	}
+	if !builderHasArgument(stages[0].Builder, "REQUOTED=words with quotes") {
+		t.Fatalf(`expected REQUOTED="words with quotes" to be present in first stage arguments list: %v`, stages[0].Builder.Arguments())
+	}
 
 	secondStageArguments := stages[1].Builder.Arguments()
 	secretInSecondStage := false
@@ -590,6 +596,12 @@ func TestMultiStageArgScope(t *testing.T) {
 	}
 	if !unusedInThirdStage {
 		t.Fatalf("expected UNUSED to be present in third stage")
+	}
+	if !builderHasArgument(stages[2].Builder, "QUOTED=words with quotes") {
+		t.Fatalf(`expected QUOTED=words with quotes to be present in third stage arguments list: %v`, thirdStageArguments)
+	}
+	if !builderHasArgument(stages[2].Builder, "REQUOTED=words with quotes") {
+		t.Fatalf(`expected REQUOTED=words with quotes to be present in third stage arguments list: %v`, thirdStageArguments)
 	}
 }
 
