@@ -492,6 +492,10 @@ type Builder struct {
 	// Raw platform string specified with `FROM --platform` of the stage
 	// It's up to the implementation or client to parse and use this field
 	Platform string
+	// After contains the stage name specified with `FROM --after=<stage>`. This
+	// declares a dependency on another stage. It's up to the implementation or
+	// client to handle this field.
+	After string
 
 	// Overrides for TARGET... and BUILD... values. TARGET... values are
 	// typically only necessary if the builder's target platform is not the
