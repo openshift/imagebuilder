@@ -4,7 +4,7 @@ go 1.23.3
 
 require (
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/platforms v1.0.0-rc.1
+	github.com/containerd/platforms v1.0.0-rc.2
 	github.com/distribution/reference v0.6.0
 	github.com/docker/docker v28.5.1+incompatible
 	github.com/fsouza/go-dockerclient v1.11.2
