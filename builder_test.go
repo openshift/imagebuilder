@@ -72,6 +72,101 @@ func TestVolumeSet(t *testing.T) {
 	}
 }
 
+func TestByName(t *testing.T) {
+	n, err := ParseFile("dockerclient/testdata/Dockerfile.target")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err := NewStages(n, NewBuilder(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages))
+	}
+	t.Logf("stages: %#v", stages)
+
+	stage1, found := stages.ByName("mytarget")
+	if !found {
+		t.Fatal("First target not found")
+	}
+	if stage1.Position != 1 {
+		t.Fatalf("expected stage at position 1, got %d", stage1.Position)
+	}
+	t.Logf("stage1: %#v", stage1)
+
+	stage2, found := stages.ByName("mytarget2")
+	if !found {
+		t.Fatal("Second target not found")
+	}
+	if stage2.Position != 2 {
+		t.Fatalf("expected stage at position 2, got %d", stage1.Position)
+	}
+	t.Logf("stage2: %#v", stage2)
+
+	stage3, found := stages.ByName("1")
+	if !found {
+		t.Fatal("Third target not found")
+	}
+	if stage3.Position != 1 {
+		t.Fatalf("expected stage at position 1, got %d", stage3.Position)
+	}
+	t.Logf("stage3: %#v", stage3)
+	assert.Equal(t, stage3, stage1)
+
+	stage4, found := stages.ByName("2")
+	if !found {
+		t.Fatal("Fourth target not found")
+	}
+	if stage4.Position != 2 {
+		t.Fatalf("expected stage at position 2, got %d", stage4.Position)
+	}
+	t.Logf("stage4: %#v", stage4)
+	assert.Equal(t, stage4, stage2)
+
+	stage5, found := stages.ByName("mytarget3")
+	if !found {
+		t.Fatal("Fifth target not found")
+	}
+	if stage5.Position != 3 {
+		t.Fatalf("expected stage at position 3, got %d", stage5.Position)
+	}
+	t.Logf("stage5: %#v", stage5)
+
+	stage6, found := stages.ByName("3")
+	if !found {
+		t.Fatal("Sixth target not found")
+	}
+	if stage6.Position != 3 {
+		t.Fatalf("expected stage at position 3, got %d", stage6.Position)
+	}
+	t.Logf("stage6: %#v", stage6)
+	assert.Equal(t, stage6, stage5)
+
+	n, err = ParseFile("dockerclient/testdata/Dockerfile.target")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err = NewStages(n, NewBuilder(map[string]string{"TARGET3": "mytarget"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stage, got %d", len(stages))
+	}
+	t.Logf("stages: %#v", stages)
+
+	stage7, found := stages.ByName("mytarget")
+	if !found {
+		t.Fatal("Seventh target not found")
+	}
+	if stage7.Position != 3 {
+		t.Fatalf("expected stage at position 3, got %d", stage7.Position)
+	}
+	t.Logf("stage7: %#v", stage7)
+
+}
+
 func TestByTarget(t *testing.T) {
 	n, err := ParseFile("dockerclient/testdata/Dockerfile.target")
 	if err != nil {
@@ -92,6 +187,9 @@ func TestByTarget(t *testing.T) {
 	}
 	if len(stages1) != 1 {
 		t.Fatalf("expected 1 stages, got %d", len(stages1))
+	}
+	if stages1[0].Position != 1 {
+		t.Fatalf("expected stage at position 1, got %d", stages1[0].Position)
 	}
 	t.Logf("stages1: %#v", stages1)
 
@@ -138,10 +236,36 @@ func TestByTarget(t *testing.T) {
 		t.Fatal("Sixth target not found")
 	}
 	if len(stages6) != 1 {
-		t.Fatalf("expected 1 stages, got %d", len(stages4))
+		t.Fatalf("expected 1 stages, got %d", len(stages6))
 	}
 	t.Logf("stages6: %#v", stages6)
 	assert.Equal(t, stages6, stages5)
+
+	n, err = ParseFile("dockerclient/testdata/Dockerfile.target")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stages, err = NewStages(n, NewBuilder(map[string]string{"TARGET3": "mytarget"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages))
+	}
+	t.Logf("stages: %#v", stages)
+
+	stages7, found := stages.ByTarget("mytarget")
+	if !found {
+		t.Fatal("Seventh target not found")
+	}
+	if len(stages7) != 1 {
+		t.Fatalf("expected 1 stages, got %d", len(stages7))
+	}
+	if stages7[0].Position != 3 {
+		t.Fatalf("expected stage at position 3, got %d", stages7[0].Position)
+	}
+	t.Logf("stages7: %#v", stages7)
+
 }
 
 func TestThroughTarget(t *testing.T) {
@@ -214,6 +338,29 @@ func TestThroughTarget(t *testing.T) {
 	}
 	t.Logf("stages6: %#v", stages6)
 	assert.Equal(t, stages6, stages5)
+
+	n, err = ParseFile("dockerclient/testdata/Dockerfile.target")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stages, err = NewStages(n, NewBuilder(map[string]string{"TARGET3": "mytarget"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages))
+	}
+	t.Logf("stages: %#v", stages)
+
+	stages7, found := stages.ThroughTarget("mytarget")
+	if !found {
+		t.Fatal("Seventh target not found")
+	}
+	if len(stages7) != 4 {
+		t.Fatalf("expected 4 stages, got %d", len(stages7))
+	}
+	t.Logf("stages7: %#v", stages7)
 }
 
 func TestMultiStageParse(t *testing.T) {

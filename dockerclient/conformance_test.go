@@ -505,6 +505,12 @@ func TestConformanceInternal(t *testing.T) {
 			Dockerfile: "testdata/builtins/Dockerfile.margs",
 		},
 		{
+			Name:       "duplicate-stage",
+			Version:    docker.BuilderBuildKit,
+			ContextDir: "testdata/multistage",
+			Dockerfile: "Dockerfile.dupstage",
+		},
+		{
 			Name:       "header-builtin",
 			Version:    docker.BuilderBuildKit,
 			ContextDir: "testdata/header-builtin",
