@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	dockerregistrytypes "github.com/docker/docker/api/types/registry"
 	docker "github.com/fsouza/go-dockerclient"
+	dockerregistrytypes "github.com/moby/moby/api/types/registry"
 	"k8s.io/klog"
 
 	"github.com/openshift/imagebuilder"
