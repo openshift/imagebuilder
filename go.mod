@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v28.5.1+incompatible
 	github.com/fsouza/go-dockerclient v1.11.2
 	github.com/moby/buildkit v0.23.2
+	github.com/moby/patternmatcher v0.6.0
 	github.com/stretchr/testify v1.11.1
 	go.podman.io/storage v1.60.0
 	k8s.io/klog v1.0.0
@@ -28,7 +29,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
-	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect

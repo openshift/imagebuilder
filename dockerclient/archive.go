@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/moby/patternmatcher"
 	"go.podman.io/storage/pkg/archive"
 	"go.podman.io/storage/pkg/fileutils"
 	"go.podman.io/storage/pkg/idtools"
@@ -652,14 +653,14 @@ func archiveOptionsFor(directory string, infos []CopyInfo, dst string, excludes 
 		ChownOpts: &idtools.IDPair{UID: 0, GID: 0},
 	}
 
-	pm, err := fileutils.NewPatternMatcher(excludes)
+	pm, err := patternmatcher.New(excludes)
 	if err != nil {
 		return options, nil
 	}
 
 	if !dstIsDir {
 		for _, info := range infos {
-			if ok, _ := pm.Matches(info.Path); ok {
+			if ok, _ := pm.MatchesOrParentMatches(info.Path); ok {
 				continue
 			}
 			infoPath := info.Path
@@ -674,7 +675,7 @@ func archiveOptionsFor(directory string, infos []CopyInfo, dst string, excludes 
 	}
 
 	for _, info := range infos {
-		if ok, _ := pm.Matches(info.Path); ok {
+		if ok, _ := pm.MatchesOrParentMatches(info.Path); ok {
 			continue
 		}
 
