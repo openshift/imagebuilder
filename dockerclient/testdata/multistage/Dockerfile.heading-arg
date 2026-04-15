@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG GO_IMAGE=mirror.gcr.io/golang
 FROM $GO_IMAGE:$GO_VERSION as builder
 ARG FOO

@@ -390,7 +390,7 @@ func TestMultiStageParseHeadingArg(t *testing.T) {
 		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
 
-	fromImages := []string{"mirror.gcr.io/golang:1.24", "mirror.gcr.io/busybox:latest", "mirror.gcr.io/golang:1.24"}
+	fromImages := []string{"mirror.gcr.io/golang:1.25", "mirror.gcr.io/busybox:latest", "mirror.gcr.io/golang:1.25"}
 	for i, stage := range stages {
 		from, err := stage.Builder.From(stage.Node)
 		if err != nil {
