@@ -779,7 +779,7 @@ func TestRun(t *testing.T) {
 		}
 	}
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 type testExecutor struct {
@@ -1194,7 +1194,7 @@ func TestRunWithEnvArgConflict(t *testing.T) {
 	}
 
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 func TestRunWithMultiArg(t *testing.T) {
@@ -1230,7 +1230,7 @@ func TestRunWithMultiArg(t *testing.T) {
 	}
 
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 func TestParseDockerignore(t *testing.T) {
