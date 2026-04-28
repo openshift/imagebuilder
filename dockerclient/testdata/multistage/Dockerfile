@@ -1,4 +1,4 @@
-FROM mirror.gcr.io/golang:1.24 as builder
+FROM mirror.gcr.io/golang:1.25 as builder
 WORKDIR /tmp
 COPY . .
 RUN echo foo > /tmp/bar

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/moby/patternmatcher"
 	"go.podman.io/storage/pkg/archive"
 	"go.podman.io/storage/pkg/fileutils"
 	"go.podman.io/storage/pkg/idtools"
@@ -137,7 +137,7 @@ func archiveFromURL(src, dst, tempDir string, check DirectoryCheck) (io.Reader, 
 		}
 		r := resp.Body
 		if resp.ContentLength == -1 {
-			f, err := ioutil.TempFile(tempDir, "url")
+			f, err := os.CreateTemp(tempDir, "url")
 			if err != nil {
 				return nil, nil, false, fmt.Errorf("unable to create temporary file for source URL: %v", err)
 			}
@@ -605,7 +605,7 @@ func (m *archiveMapper) Filter(h *tar.Header, r io.Reader) ([]byte, bool, bool, 
 					pr.Close()
 					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching %q: %v", h.Name, h.Linkname, h.Linkname, err)
 				}
-				buf, err := ioutil.ReadAll(pr)
+				buf, err := io.ReadAll(pr)
 				pr.Close()
 				if err != nil {
 					return nil, false, true, fmt.Errorf("needed to create %q as a hard link to %q, but got error refetching contents of %q: %v", h.Name, h.Linkname, h.Linkname, err)
@@ -652,14 +652,14 @@ func archiveOptionsFor(directory string, infos []CopyInfo, dst string, excludes 
 		ChownOpts: &idtools.IDPair{UID: 0, GID: 0},
 	}
 
-	pm, err := fileutils.NewPatternMatcher(excludes)
+	pm, err := patternmatcher.New(excludes)
 	if err != nil {
 		return options, nil
 	}
 
 	if !dstIsDir {
 		for _, info := range infos {
-			if ok, _ := pm.Matches(info.Path); ok {
+			if ok, _ := pm.MatchesOrParentMatches(info.Path); ok {
 				continue
 			}
 			infoPath := info.Path
@@ -674,7 +674,7 @@ func archiveOptionsFor(directory string, infos []CopyInfo, dst string, excludes 
 	}
 
 	for _, info := range infos {
-		if ok, _ := pm.Matches(info.Path); ok {
+		if ok, _ := pm.MatchesOrParentMatches(info.Path); ok {
 			continue
 		}
 
@@ -728,7 +728,7 @@ func sourceToDestinationName(src, dst string, forceDir bool) string {
 // error occurs the remainder of the pipe is read to prevent blocking.
 func logArchiveOutput(r io.Reader, prefix string) {
 	pr, pw := io.Pipe()
-	r = ioutil.NopCloser(io.TeeReader(r, pw))
+	r = io.NopCloser(io.TeeReader(r, pw))
 	go func() {
 		err := func() error {
 			tr := tar.NewReader(pr)
@@ -738,14 +738,14 @@ func logArchiveOutput(r io.Reader, prefix string) {
 					return err
 				}
 				klog.Infof("%s %s (%d %s)", prefix, h.Name, h.Size, h.FileInfo().Mode())
-				if _, err := io.Copy(ioutil.Discard, tr); err != nil {
+				if _, err := io.Copy(io.Discard, tr); err != nil {
 					return err
 				}
 			}
 		}()
 		if err != io.EOF {
 			klog.Infof("%s: unable to log archive output: %v", prefix, err)
-			io.Copy(ioutil.Discard, pr)
+			io.Copy(io.Discard, pr)
 		}
 	}()
 }
