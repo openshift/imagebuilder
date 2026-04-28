@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"io"
-	"io/ioutil"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/klog"
@@ -77,7 +76,7 @@ func isContainerPathDirectory(client *docker.Client, containerID, path string) (
 	// take the remainder of the input and discard it
 	go func() {
 		cancel()
-		n, err := io.Copy(ioutil.Discard, pr)
+		n, err := io.Copy(io.Discard, pr)
 		if n > 0 || err != nil {
 			klog.V(6).Infof("Discarded %d bytes from end of container directory check, and got error: %v", n, err)
 		}

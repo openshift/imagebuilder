@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -829,7 +828,7 @@ func ParseIgnoreReader(r io.Reader) ([]string, error) {
 func ParseIgnore(path string) ([]string, error) {
 	var excludes []string
 
-	ignores, err := ioutil.ReadFile(path)
+	ignores, err := os.ReadFile(path)
 	if err != nil {
 		return excludes, err
 	}

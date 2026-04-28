@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -747,7 +746,7 @@ func (e *ClientExecutor) createOrReplaceContainerPathWithOwner(path string, uid,
 		}
 		err := e.Client.DownloadFromContainer(e.Container.ID, docker.DownloadFromContainerOptions{
 			Path:         dest,
-			OutputStream: ioutil.Discard,
+			OutputStream: io.Discard,
 		})
 		return err
 	}
@@ -1293,7 +1292,7 @@ func (e *ClientExecutor) isContainerGlobMultiple(client *docker.Client, from, gl
 
 	// take the remainder of the input and discard it
 	go func() {
-		n, err := io.Copy(ioutil.Discard, reader)
+		n, err := io.Copy(io.Discard, reader)
 		if n > 0 || err != nil {
 			klog.V(6).Infof("Discarded %d bytes from end of from glob check, and got error: %v", n, err)
 		}
@@ -1437,7 +1436,7 @@ func filterTarPipe(w *tar.Writer, r *tar.Reader, fn func(*tar.Header) bool) erro
 				return err
 			}
 		} else {
-			if _, err := io.Copy(ioutil.Discard, r); err != nil {
+			if _, err := io.Copy(io.Discard, r); err != nil {
 				return err
 			}
 		}
@@ -1447,7 +1446,7 @@ func filterTarPipe(w *tar.Writer, r *tar.Reader, fn func(*tar.Header) bool) erro
 // snapshotPath preserves the contents of path in container containerID as a temporary
 // archive, returning either an error or the path of the archived file.
 func snapshotPath(path, containerID, tempDir string, client *docker.Client) (string, error) {
-	f, err := ioutil.TempFile(tempDir, "archived-path")
+	f, err := os.CreateTemp(tempDir, "archived-path")
 	if err != nil {
 		return "", err
 	}

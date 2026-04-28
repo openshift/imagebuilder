@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1084,7 +1083,7 @@ func TestBuilder(t *testing.T) {
 	}
 	for i, test := range testCases {
 		t.Run(fmt.Sprintf("%s %d", test.Dockerfile, i), func(t *testing.T) {
-			data, err := ioutil.ReadFile(test.Dockerfile)
+			data, err := os.ReadFile(test.Dockerfile)
 			if err != nil {
 				t.Fatalf("%d: %v", i, err)
 			}
@@ -1234,7 +1233,7 @@ func TestRunWithMultiArg(t *testing.T) {
 }
 
 func TestParseDockerignore(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dockerignore*")
+	dir, err := os.MkdirTemp("", "dockerignore*")
 	if err != nil {
 		t.Fatal(err)
 	}
