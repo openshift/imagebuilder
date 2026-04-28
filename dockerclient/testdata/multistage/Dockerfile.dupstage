@@ -1,0 +1,9 @@
+FROM mirror.gcr.io/busybox AS stage0
+COPY --chown=0:0 stage0.txt /stage.txt
+LABEL x="really stage 0"
+
+FROM mirror.gcr.io/busybox AS stage0
+COPY --chown=0:0 stage1.txt /stage.txt
+LABEL x="really stage 1"
+
+FROM stage0
