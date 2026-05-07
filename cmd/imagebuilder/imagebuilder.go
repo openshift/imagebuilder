@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	"github.com/distribution/reference"
-	dockerregistrytypes "github.com/docker/docker/api/types/registry"
 	docker "github.com/fsouza/go-dockerclient"
+	dockerregistrytypes "github.com/moby/moby/api/types/registry"
 	"k8s.io/klog"
 
 	"github.com/openshift/imagebuilder"
@@ -34,7 +34,7 @@ func main() {
 	var version bool
 	var mountSpecs stringSliceFlag
 
-	VERSION := "1.2.21-dev"
+	VERSION := "1.2.22-dev"
 	arguments := stringMapFlag{}
 
 	flag.Var(&tags, "t", "The name to assign this image, if any. May be specified multiple times.")
@@ -109,8 +109,9 @@ func main() {
 				return []dockerregistrytypes.AuthConfig{{
 					Username:      authConfig.Username,
 					Password:      authConfig.Password,
-					Email:         authConfig.Email,
 					ServerAddress: authConfig.ServerAddress,
+					IdentityToken: authConfig.IdentityToken,
+					RegistryToken: authConfig.RegistryToken,
 				}}, true
 			}
 			if named, err := reference.ParseNormalizedNamed(name); err == nil {
@@ -120,8 +121,9 @@ func main() {
 					return []dockerregistrytypes.AuthConfig{{
 						Username:      authConfig.Username,
 						Password:      authConfig.Password,
-						Email:         authConfig.Email,
 						ServerAddress: authConfig.ServerAddress,
+						IdentityToken: authConfig.IdentityToken,
+						RegistryToken: authConfig.RegistryToken,
 					}}, true
 				}
 				if domain == "docker.io" || strings.HasSuffix(domain, ".docker.io") {
@@ -135,8 +137,9 @@ func main() {
 							auths = append(auths, dockerregistrytypes.AuthConfig{
 								Username:      authConfig.Username,
 								Password:      authConfig.Password,
-								Email:         authConfig.Email,
 								ServerAddress: authConfig.ServerAddress,
+								IdentityToken: authConfig.IdentityToken,
+								RegistryToken: authConfig.RegistryToken,
 							})
 						}
 					}

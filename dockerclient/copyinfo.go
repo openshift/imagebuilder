@@ -3,7 +3,6 @@ package dockerclient
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -78,12 +77,16 @@ func calcCopyInfo(origPath, rootPath string, allowWildcards, explicitDir bool) (
 			return []CopyInfo{{FileInfo: fi, Path: origPath, FromDir: false}}, nil
 		}
 		var copyInfos []CopyInfo
-		infos, err := ioutil.ReadDir(rootPath)
+		infos, err := os.ReadDir(rootPath)
 		if err != nil {
 			return nil, err
 		}
 		for _, info := range infos {
-			copyInfos = append(copyInfos, CopyInfo{FileInfo: info, Path: info.Name(), FromDir: explicitDir})
+			fileInfo, err := info.Info()
+			if err != nil {
+				return nil, err
+			}
+			copyInfos = append(copyInfos, CopyInfo{FileInfo: fileInfo, Path: info.Name(), FromDir: explicitDir})
 		}
 		return copyInfos, nil
 	}
@@ -112,7 +115,7 @@ func DownloadURL(src, dst, tempDir string) ([]CopyInfo, string, error) {
 		return nil, "", fmt.Errorf("server returned a status code >= 400: %s", resp.Status)
 	}
 
-	tmpDir, err := ioutil.TempDir(tempDir, "dockerbuildurl-")
+	tmpDir, err := os.MkdirTemp(tempDir, "dockerbuildurl-")
 	if err != nil {
 		return nil, "", err
 	}

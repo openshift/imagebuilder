@@ -16,8 +16,8 @@ COPY --from=2 /third.txt /fourth.txt
 FROM mirror.gcr.io/alpine
 COPY --from=multistagebase /base.txt /fifth.txt
 COPY --from=multistagebase ./tmp/tmp.txt /tmp.txt
-# "mirror.gcr.io/golang:1.24" has a default working directory of /go, and /go/src is a directory
-COPY --from=mirror.gcr.io/golang:1.24    go/src /src
+# "mirror.gcr.io/golang:1.25" has a default working directory of /go, and /go/src is a directory
+COPY --from=mirror.gcr.io/golang:1.25    go/src /src
 
 FROM multistagebase as final
 COPY copy/script /

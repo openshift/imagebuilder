@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -24,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/fileutils"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/openshift/imagebuilder/dockerfile/command"
 	"github.com/openshift/imagebuilder/dockerfile/parser"
 	"go.podman.io/storage/pkg/archive"
+	"go.podman.io/storage/pkg/fileutils"
 
 	"github.com/openshift/imagebuilder"
 )
@@ -49,7 +48,7 @@ type conformanceTest struct {
 }
 
 func TestMount(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "dockerbuild-conformance-")
+	tmpDir, err := os.MkdirTemp("", "dockerbuild-conformance-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +171,7 @@ func TestCopyFrom(t *testing.T) {
 }
 
 func TestShell(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "dockerbuild-conformance-")
+	tmpDir, err := os.MkdirTemp("", "dockerbuild-conformance-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +211,7 @@ func TestShell(t *testing.T) {
 }
 
 func TestMultiStageBase(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "dockerbuild-conformance-")
+	tmpDir, err := os.MkdirTemp("", "dockerbuild-conformance-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -684,7 +683,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 	if len(dockerfile) == 0 {
 		dockerfile = "Dockerfile"
 	}
-	tmpDir, err := ioutil.TempDir("", "dockerbuild-conformance-")
+	tmpDir, err := os.MkdirTemp("", "dockerbuild-conformance-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -770,7 +769,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 	}
 
 	// read the dockerfile
-	data, err := ioutil.ReadFile(dockerfilePath)
+	data, err := os.ReadFile(dockerfilePath)
 	if err != nil {
 		t.Errorf("%d: unable to read Dockerfile %q: %v", i, input, err)
 		return
@@ -875,7 +874,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 				nameDocker := fmt.Sprintf(nameFormat, i, "docker", j, k+1)
 
 				// run docker build for this stage thru this step
-				if err := ioutil.WriteFile(dockerfilePath, []byte(testFile), 0600); err != nil {
+				if err := os.WriteFile(dockerfilePath, []byte(testFile), 0600); err != nil {
 					t.Fatalf("%d: unable to update Dockerfile %q: %v", i, dockerfilePath, err)
 				}
 				in, err := archive.TarWithOptions(dir, &archive.TarOptions{IncludeFiles: []string{"."}, ExcludePatterns: exclude})
@@ -898,7 +897,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 					Version:             test.Version,
 				}); err != nil {
 					in.Close()
-					data, _ := ioutil.ReadFile(dockerfilePath)
+					data, _ := os.ReadFile(dockerfilePath)
 					t.Fatalf("%d: unable to build Docker image %q: %v\n%s\n%s", i, test.Git, err, string(data), dockerOut)
 				}
 				in.Close()
@@ -932,7 +931,7 @@ func conformanceTester(t *testing.T, c *docker.Client, test conformanceTest, i i
 					metadataEqual,
 					append(ignoreFuncs{ignoreSmallFileChange}, test.Ignore...)...,
 				) {
-					data, _ := ioutil.ReadFile(dockerfilePath)
+					data, _ := os.ReadFile(dockerfilePath)
 					t.Logf("Dockerfile:\n%s", data)
 					t.Fatalf("%d: layered Docker build was not equivalent to direct layer image metadata %s", i, input)
 				}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -391,7 +390,7 @@ func TestMultiStageParseHeadingArg(t *testing.T) {
 		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
 
-	fromImages := []string{"mirror.gcr.io/golang:1.24", "mirror.gcr.io/busybox:latest", "mirror.gcr.io/golang:1.24"}
+	fromImages := []string{"mirror.gcr.io/golang:1.25", "mirror.gcr.io/busybox:latest", "mirror.gcr.io/golang:1.25"}
 	for i, stage := range stages {
 		from, err := stage.Builder.From(stage.Node)
 		if err != nil {
@@ -779,7 +778,7 @@ func TestRun(t *testing.T) {
 		}
 	}
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 type testExecutor struct {
@@ -1084,7 +1083,7 @@ func TestBuilder(t *testing.T) {
 	}
 	for i, test := range testCases {
 		t.Run(fmt.Sprintf("%s %d", test.Dockerfile, i), func(t *testing.T) {
-			data, err := ioutil.ReadFile(test.Dockerfile)
+			data, err := os.ReadFile(test.Dockerfile)
 			if err != nil {
 				t.Fatalf("%d: %v", i, err)
 			}
@@ -1194,7 +1193,7 @@ func TestRunWithEnvArgConflict(t *testing.T) {
 	}
 
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 func TestRunWithMultiArg(t *testing.T) {
@@ -1230,11 +1229,11 @@ func TestRunWithMultiArg(t *testing.T) {
 	}
 
 	t.Logf("config: %#v", b.Config())
-	t.Logf(node.Dump())
+	t.Log(node.Dump())
 }
 
 func TestParseDockerignore(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dockerignore*")
+	dir, err := os.MkdirTemp("", "dockerignore*")
 	if err != nil {
 		t.Fatal(err)
 	}

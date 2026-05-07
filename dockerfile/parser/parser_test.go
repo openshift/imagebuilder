@@ -3,7 +3,6 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -64,7 +63,7 @@ func TestParseCases(t *testing.T) {
 		result, err := Parse(df)
 		require.NoError(t, err, dockerfile)
 
-		content, err := ioutil.ReadFile(resultfile)
+		content, err := os.ReadFile(resultfile)
 		require.NoError(t, err, resultfile)
 
 		if runtime.GOOS == "windows" {

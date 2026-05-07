@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -98,7 +97,7 @@ func (g *archiveGenerator) Reader() io.Reader {
 }
 
 func Test_archiveFromFile(t *testing.T) {
-	f, err := ioutil.TempFile("", "test-tar")
+	f, err := os.CreateTemp("", "test-tar")
 	if err != nil {
 		t.Fatal(err)
 	}
