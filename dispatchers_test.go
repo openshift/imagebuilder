@@ -273,6 +273,36 @@ func TestDispatchCopyChown(t *testing.T) {
 	}
 }
 
+func TestCheckChmodConversion(t *testing.T) {
+	good := []string{
+		// Numeric modes, as before.
+		"644", "755", "0755", "0777", "7755",
+		// Symbolic modes: who+op+perms in the common shapes.
+		"+x", "u+x", "g-w", "o-r", "a+rX", "a+rwx", "u+rX,go-w", "a+rX,go-w",
+		"u=rx,g=,o=", "g=u", "u+s", "o+t", "=rw,+X",
+		// Multiple op-perms groups within one clause, as chmod(1) allows.
+		"u+r-w", "g+r=rx", "o-r+x", "u+rX-w",
+	}
+	for _, mode := range good {
+		if err := checkChmodConversion(mode); err != nil {
+			t.Errorf("expected %q to be accepted, got %v", mode, err)
+		}
+	}
+	bad := []string{
+		"", "888", "0778", "0o755", "17777", "rwxrwxrwx", "x+", "a&+r",
+		"+x,", ",+x", "+x,,u+w", "a+rX,", "chmod", "r",
+		// Who letters or permission letters alone, without an operator.
+		"a", "ugo", "X",
+		// Whitespace is not part of the grammar.
+		"u +x",
+	}
+	for _, mode := range bad {
+		if err := checkChmodConversion(mode); err == nil {
+			t.Errorf("expected %q to be rejected", mode)
+		}
+	}
+}
+
 func TestDispatchCopyChmod(t *testing.T) {
 	mybuilder := Builder{
 		RunConfig: docker.Config{
@@ -322,6 +352,18 @@ func TestDispatchCopyChmod(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
+	}
+
+	// Test symbolic chmod values: accepted and passed through verbatim for the
+	// executor to resolve against each copied file's mode.
+	flagArgs = []string{"--chmod=a+rX,go-w"}
+	original = "COPY --chmod=a+rX,go-w /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+	if err := dispatchCopy(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("copy error: %v", err)
+	}
+	last := mybuilder2.PendingCopies[len(mybuilder2.PendingCopies)-1]
+	if last.Chmod != "a+rX,go-w" {
+		t.Errorf("expected symbolic chmod to pass through verbatim, got %q", last.Chmod)
 	}
 }
 
@@ -766,6 +808,18 @@ func TestDispatchAddChmod(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mybuilder2.PendingCopies, expectedPendingCopies) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder2.PendingCopies)
+	}
+
+	// Test symbolic chmod values: accepted and passed through verbatim for the
+	// executor to resolve against each copied file's mode.
+	flagArgs = []string{"--chmod=u+x"}
+	original = "ADD --chmod=u+x /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"
+	if err := add(&mybuilder2, args, nil, flagArgs, original, nil); err != nil {
+		t.Errorf("add error: %v", err)
+	}
+	last := mybuilder2.PendingCopies[len(mybuilder2.PendingCopies)-1]
+	if last.Chmod != "u+x" {
+		t.Errorf("expected symbolic chmod to pass through verbatim, got %q", last.Chmod)
 	}
 }
 

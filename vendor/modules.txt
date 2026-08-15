@@ -122,6 +122,9 @@ github.com/sirupsen/logrus
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
+# github.com/tonistiigi/dchapes-mode v0.0.0-20250318174251-73d941a28323
+## explicit; go 1.21
+github.com/tonistiigi/dchapes-mode
 # github.com/ulikunitz/xz v0.5.15
 ## explicit; go 1.12
 github.com/ulikunitz/xz
