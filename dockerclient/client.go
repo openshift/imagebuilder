@@ -1093,7 +1093,7 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 		if c.Chmod != "" {
 			parsed, err := mode.Parse(c.Chmod)
 			if err != nil {
-				return fmt.Errorf("invalid chmod %q", c.Chmod)
+				return fmt.Errorf("invalid chmod %q: %w", c.Chmod, err)
 			}
 			chmod = func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error) {
 				applyChmod(h, parsed)

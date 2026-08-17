@@ -828,7 +828,7 @@ func checkChmodConversion(chmod string) error {
 		return nil
 	}
 	if _, err := mode.Parse(chmod); err != nil {
-		return fmt.Errorf("Error parsing chmod %s", chmod)
+		return fmt.Errorf("Error parsing chmod %s: %w", chmod, err)
 	}
 	return nil
 }
