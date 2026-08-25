@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/imagebuilder"
 	"github.com/openshift/imagebuilder/dockerfile/parser"
 	"github.com/openshift/imagebuilder/imageprogress"
+	"github.com/tonistiigi/dchapes-mode"
 )
 
 // NewClientFromEnv is exposed to simplify getting a client when vendoring this library.
@@ -1051,6 +1052,27 @@ func (e *ClientExecutor) getUser(userspec string) (int, int, error) {
 	return int(parsedUid), int(parsedGid), nil
 }
 
+// applyChmod rewrites h's permission bits per set, preserving the file-type
+// bits. It goes through h.FileInfo().Mode() so symbolic clauses see a correct
+// os.FileMode (ModeDir, and setuid/setgid/sticky in their flag positions),
+// then maps the result back onto the tar header's unix convention
+// (setuid/setgid/sticky at 0o4000/0o2000/0o1000). An absolute (numeric or
+// "=") mode replaces the permission and special bits entirely, matching
+// chmod(1).
+func applyChmod(h *tar.Header, set mode.Set) {
+	fm := set.Apply(h.FileInfo().Mode())
+	h.Mode = (h.Mode &^ 0o7777) | int64(fm.Perm())
+	if fm&os.ModeSetuid != 0 {
+		h.Mode |= 0o4000
+	}
+	if fm&os.ModeSetgid != 0 {
+		h.Mode |= 0o2000
+	}
+	if fm&os.ModeSticky != 0 {
+		h.Mode |= 0o1000
+	}
+}
+
 // CopyContainer copies the provided content into a destination container.
 func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []string, copies ...imagebuilder.Copy) error {
 	chownUid, chownGid := -1, -1
@@ -1069,14 +1091,12 @@ func (e *ClientExecutor) CopyContainer(container *docker.Container, excludes []s
 	for _, c := range copies {
 		var chmod func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error)
 		if c.Chmod != "" {
-			parsed, err := strconv.ParseInt(c.Chmod, 8, 16)
+			parsed, err := mode.Parse(c.Chmod)
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid chmod %q: %w", c.Chmod, err)
 			}
 			chmod = func(h *tar.Header, r io.Reader) (data []byte, update bool, skip bool, err error) {
-				mode := h.Mode &^ 0o777
-				mode |= parsed & 0o7777
-				h.Mode = mode
+				applyChmod(h, parsed)
 				return nil, false, false, nil
 			}
 		}

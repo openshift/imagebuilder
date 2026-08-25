@@ -561,7 +561,7 @@ func TestConformanceExternal(t *testing.T) {
 		{
 			Name: "copy and env interaction",
 			// Tests COPY and other complex interactions of ENV
-			ContextDir: "18/alpine3.22",
+			ContextDir: "19/alpine3.24",
 			Dockerfile: "Dockerfile",
 			Git:        "https://github.com/docker-library/postgres.git",
 			Ignore: []ignoreFunc{

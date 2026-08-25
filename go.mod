@@ -11,6 +11,7 @@ require (
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/patternmatcher v0.6.1
 	github.com/stretchr/testify v1.11.1
+	github.com/tonistiigi/dchapes-mode v0.0.0-20250318174251-73d941a28323
 	go.podman.io/storage v1.62.0
 	k8s.io/klog v1.0.0
 )
