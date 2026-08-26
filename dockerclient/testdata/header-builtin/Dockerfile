@@ -8,7 +8,7 @@ FROM registry.fedoraproject.org/fedora-minimal AS native
 COPY --from=amd64 /lib64/libc.so.6 /libc-amd64
 COPY --from=arm64 /lib64/libc.so.6 /libc-arm64
 RUN microdnf -y install file && microdnf -y clean all
-RUN file /libc-* | tee /libc-types.txt && touch -d @0 /libc-types.txt
+RUN file /libc-a* | tee /libc-types.txt && touch -d @0 /libc-types.txt
 
 # expect them to have different target architectures listed in their ELF headers
 FROM registry.fedoraproject.org/fedora-minimal
