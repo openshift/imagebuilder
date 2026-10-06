@@ -1150,3 +1150,56 @@ func TestDispatchExpose(t *testing.T) {
 		}
 	}
 }
+
+func TestDispatchAddUnpack(t *testing.T) {
+	unpackTrue := true
+	unpackFalse := false
+	tests := []struct {
+		name           string
+		flagArgs       []string
+		expectedUnpack *bool
+		expectErr      bool
+	}{
+		{name: "unset", flagArgs: nil, expectedUnpack: nil},
+		{name: "true", flagArgs: []string{"--unpack=true"}, expectedUnpack: &unpackTrue},
+		{name: "false", flagArgs: []string{"--unpack=false"}, expectedUnpack: &unpackFalse},
+		{name: "bare", flagArgs: []string{"--unpack"}, expectErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mybuilder := Builder{
+				RunConfig: docker.Config{
+					WorkingDir: "/root",
+					Cmd:        []string{"/bin/sh"},
+					Image:      "alpine",
+				},
+			}
+
+			args := []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager", "."}
+			original := "ADD /go/src/github.com/kubernetes-incubator/service-catalog/controller-manager ."
+			err := add(&mybuilder, args, nil, tt.flagArgs, original, nil)
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected an error, got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("add error: %v", err)
+			}
+			expectedPendingCopies := []Copy{
+				{
+					From:     "",
+					Src:      []string{"/go/src/github.com/kubernetes-incubator/service-catalog/controller-manager"},
+					Dest:     "/root/", // destination must contain a trailing slash
+					Download: true,
+					Unpack:   tt.expectedUnpack,
+				},
+			}
+			if !reflect.DeepEqual(mybuilder.PendingCopies, expectedPendingCopies) {
+				t.Errorf("Expected %v, to match %v\n", expectedPendingCopies, mybuilder.PendingCopies)
+			}
+		})
+	}
+}
