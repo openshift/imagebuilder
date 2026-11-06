@@ -458,6 +458,7 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 
 	var mounts []string
 	var network string
+	var user string
 	filteredUserArgs := make(map[string]string)
 	for k, v := range b.Args {
 		if _, ok := b.AllowedArgs[k]; ok {
@@ -482,8 +483,13 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 			if network == "" {
 				return fmt.Errorf("no value specified for --network=")
 			}
+		case strings.HasPrefix(arg, "--user="):
+			user = strings.TrimPrefix(arg, "--user=")
+			if user == "" {
+				return fmt.Errorf("no value specified for --user=")
+			}
 		default:
-			return fmt.Errorf("RUN only supports the --mount and --network flag")
+			return fmt.Errorf("RUN only supports the --mount, --network and --user flags")
 		}
 	}
 
@@ -496,6 +502,7 @@ func run(b *Builder, args []string, attributes map[string]bool, flagArgs []strin
 		Args:    args,
 		Mounts:  mounts,
 		Network: network,
+		User:    user,
 		Files:   files,
 	}
 

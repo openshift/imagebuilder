@@ -83,6 +83,9 @@ type Run struct {
 	Mounts []string
 	// Network specifies the network mode to run the container with
 	Network string
+	// User overrides the user (USER instruction) for this RUN instruction
+	// only, as specified through the --user flag inside the Containerfile.
+	User string
 	// Additional files which need to be created by executor for this
 	// instruction.
 	Files []File
@@ -628,6 +631,10 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	for _, run := range runs {
 		config := b.Config()
 		config.Env = step.Env
+		// RUN --user overrides USER for this instruction only; config is a copy.
+		if run.User != "" {
+			config.User = run.User
+		}
 		if err := exec.Run(run, *config); err != nil {
 			return err
 		}

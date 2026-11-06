@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/containerd/errdefs"
@@ -908,6 +909,85 @@ func TestDispatchNetworkFlags(t *testing.T) {
 
 	if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
 		t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+	}
+}
+
+func TestDispatchUserFlags(t *testing.T) {
+	for _, user := range []string{"root", "0:1000", "nobody:nogroup"} {
+		t.Run(user, func(t *testing.T) {
+			mybuilder := Builder{
+				RunConfig: docker.Config{
+					WorkingDir: "/root",
+					Cmd:        []string{"/bin/sh"},
+					Image:      "busybox",
+					User:       "1000",
+				},
+			}
+
+			flags := []string{"--user=" + user}
+			args := []string{"echo \"stuff\""}
+			original := "RUN --user=" + user + " echo \"stuff\""
+
+			if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+				t.Fatalf("run error: %v", err)
+			}
+			expectedPendingRuns := []Run{
+				{
+					Shell: true,
+					Args:  args,
+					User:  user,
+				},
+			}
+			if !reflect.DeepEqual(mybuilder.PendingRuns, expectedPendingRuns) {
+				t.Errorf("Expected %v, to match %v\n", expectedPendingRuns, mybuilder.PendingRuns)
+			}
+			// --user only affects this RUN instruction, not the image's configuration.
+			if mybuilder.RunConfig.User != "1000" {
+				t.Errorf("Expected RunConfig.User to remain %q, got %q", "1000", mybuilder.RunConfig.User)
+			}
+		})
+	}
+}
+
+func TestDispatchUserFlagsWithArgs(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+		Args:        map[string]string{"BUILD_UID": "0"},
+		AllowedArgs: map[string]bool{"BUILD_UID": true},
+	}
+
+	flags := []string{"--user=${BUILD_UID}:1000"}
+	args := []string{"echo \"stuff\""}
+	original := "RUN --user=${BUILD_UID}:1000 echo \"stuff\""
+
+	if err := run(&mybuilder, args, nil, flags, original, nil); err != nil {
+		t.Fatalf("run error: %v", err)
+	}
+	if len(mybuilder.PendingRuns) != 1 || mybuilder.PendingRuns[0].User != "0:1000" {
+		t.Errorf("Expected user %q, got %v", "0:1000", mybuilder.PendingRuns)
+	}
+}
+
+func TestDispatchUserFlagsEmpty(t *testing.T) {
+	mybuilder := Builder{
+		RunConfig: docker.Config{
+			WorkingDir: "/root",
+			Cmd:        []string{"/bin/sh"},
+			Image:      "busybox",
+		},
+	}
+
+	flags := []string{"--user="}
+	args := []string{"echo \"stuff\""}
+	original := "RUN --user= echo \"stuff\""
+
+	err := run(&mybuilder, args, nil, flags, original, nil)
+	if err == nil || !strings.Contains(err.Error(), "no value specified for --user=") {
+		t.Errorf("Expected error about missing --user value, got %v", err)
 	}
 }
 
