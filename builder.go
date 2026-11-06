@@ -631,6 +631,10 @@ func (b *Builder) Run(step *Step, exec Executor, noRunsRemaining bool) error {
 	for _, run := range runs {
 		config := b.Config()
 		config.Env = step.Env
+		// RUN --user overrides USER for this instruction only; config is a copy.
+		if run.User != "" {
+			config.User = run.User
+		}
 		if err := exec.Run(run, *config); err != nil {
 			return err
 		}
