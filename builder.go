@@ -83,6 +83,9 @@ type Run struct {
 	Mounts []string
 	// Network specifies the network mode to run the container with
 	Network string
+	// User overrides the user (USER instruction) for this RUN instruction
+	// only, as specified through the --user flag inside the Containerfile.
+	User string
 	// Additional files which need to be created by executor for this
 	// instruction.
 	Files []File

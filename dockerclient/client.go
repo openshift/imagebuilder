@@ -792,6 +792,10 @@ func (e *ClientExecutor) Run(run imagebuilder.Run, config docker.Config) error {
 	if run.Network != "" {
 		return fmt.Errorf("RUN --network not supported")
 	}
+	// config is a copy, so this only affects this RUN instruction
+	if run.User != "" {
+		config.User = run.User
+	}
 
 	args := make([]string, len(run.Args))
 	copy(args, run.Args)
